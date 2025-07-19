@@ -1,3 +1,8 @@
+variable "ENVIRONMENT" {
+  description = "Deployment environment"
+  type        = string
+}
+
 variable "SNOWFLAKE_ORGANIZATION" {
   description = "Snowflake organization name"
   type        = string
