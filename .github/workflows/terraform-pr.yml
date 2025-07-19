@@ -21,13 +21,13 @@ env:
   AWS_REGION: us-west-2
   TF_VERSION: 1.11.3
   TF_VAR_ENVIRONMENT: prd
-  # TF_VAR_snowflake_account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-  # TF_VAR_snowflake_user: ${{ secrets.SNOWFLAKE_USER }}
-  # TF_VAR_snowflake_password: ${{ secrets.SNOWFLAKE_PASSWORD }}
-  # TF_VAR_snowflake_role: ${{ secrets.SNOWFLAKE_ROLE }}
-  # TF_VAR_snowflake_warehouse: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
-  # TF_VAR_snowflake_database: ${{ secrets.SNOWFLAKE_DATABASE }}
-  # TF_VAR_snowflake_schema: ${{ secrets.SNOWFLAKE_SCHEMA }}
+  TF_VAR_SNOWFLAKE_ORGANIZATION: ${{ secrets.SNOWFLAKE_ORGANIZATION }}
+  TF_VAR_SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+  TF_VAR_SNOWFLAKE_REGION: ${{ secrets.SNOWFLAKE_REGION }}
+  TF_VAR_SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+  TF_VAR_SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+  TF_VAR_SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
+  TF_VAR_SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
 
 defaults:
   run:
@@ -61,9 +61,7 @@ jobs:
       - name: Terraform validate
         run: |
           terraform validate -no-color
-
-
-# tflint / checkov などの静的解析ツール
-
-# terraform plan (ターゲットはprd環境。出力結果をPRコメントとして投稿)
-# ポイント: このステップでdev環境のplanは通常不要です。なぜなら、最終的にmainブランチにマージされるのはprd環境に適用される変更だからです。
+      - name: Terraform plan
+      # ポイント: このステップでdev環境のplanは通常不要です。なぜなら、最終的にmainブランチにマージされるのはprd環境に適用される変更だからです。
+        run: |
+          terraform plan
