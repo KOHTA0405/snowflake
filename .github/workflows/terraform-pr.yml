@@ -20,6 +20,7 @@ permissions:
 env:
   AWS_REGION: us-west-2
   TF_VERSION: 1.11.3
+  TF_VAR_ENVIRONMENT: prd
   # TF_VAR_snowflake_account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
   # TF_VAR_snowflake_user: ${{ secrets.SNOWFLAKE_USER }}
   # TF_VAR_snowflake_password: ${{ secrets.SNOWFLAKE_PASSWORD }}
@@ -55,7 +56,8 @@ jobs:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE_ARN }}
       - name: Terraform init
         run: |
-          terraform init
+          terraform init \
+            --backend-config="key=snowflake/${{ env.TF_VAR_ENVIRONMENT }}/terraform.tfstate"
       - name: Terraform validate
         run: |
           terraform validate -no-color
