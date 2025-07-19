@@ -50,7 +50,7 @@ jobs:
       - name: Configure AWS Credentials for China region audience
         uses: aws-actions/configure-aws-credentials@v4.1.0
         with:
-          audience: sts.amazonaws.com.cn
+          audience: sts.amazonaws.com
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_IAM_ROLE_ARN }}
       - name: Terraform init
