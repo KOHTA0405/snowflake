@@ -13,6 +13,10 @@ on:
       - .github/workflows/**
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
   TF_VERSION: 1.11.3
   # TF_VAR_snowflake_account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
