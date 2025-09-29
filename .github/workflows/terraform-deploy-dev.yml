@@ -1,0 +1,13 @@
+# on:
+#   push:
+#     branches:
+#       - main
+
+
+# 内容:
+
+# Terraformの初期設定（dev環境用のバックエンド設定やプロバイダ認証など）。
+
+# terraform apply -auto-approve (または適切な承認プロセス)
+
+# 環境変数やワークスペースを使ってdev環境を識別・ターゲットにする。
