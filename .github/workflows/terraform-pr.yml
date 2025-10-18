@@ -20,12 +20,10 @@ permissions:
 env:
   AWS_REGION: us-west-2
   TF_VERSION: 1.11.3
-  TF_VAR_ENVIRONMENT: prd
   TF_VAR_SNOWFLAKE_ORGANIZATION: ${{ secrets.SNOWFLAKE_ORGANIZATION }}
   TF_VAR_SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
   TF_VAR_SNOWFLAKE_REGION: ${{ secrets.SNOWFLAKE_REGION }}
   TF_VAR_SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
-  TF_VAR_SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
   TF_VAR_SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
   TF_VAR_SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
 
@@ -56,11 +54,13 @@ jobs:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE_ARN }}
       - name: Terraform init
         run: |
-          terraform init \
-            --backend-config="key=snowflake/${{ env.TF_VAR_ENVIRONMENT }}/terraform.tfstate"
+          terraform init
       - name: Terraform validate
         run: |
           terraform validate -no-color
+      - name: Select Terraform workspace
+        run: |
+          terraform workspace select prd || terraform workspace new prd
       - name: Terraform plan
       # ポイント: このステップでdev環境のplanは通常不要です。なぜなら、最終的にmainブランチにマージされるのはprd環境に適用される変更だからです。
         run: |
