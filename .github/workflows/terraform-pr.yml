@@ -48,7 +48,7 @@ jobs:
       - name: Terraform fmt
         run: |
           terraform fmt --check
-      - name: Configure AWS Credentials for China region audience
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4.1.0
         with:
           audience: sts.amazonaws.com
