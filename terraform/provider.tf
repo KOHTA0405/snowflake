@@ -15,9 +15,12 @@ terraform {
 }
 
 provider "snowflake" {
-  organization_name = var.SNOWFLAKE_ORGANIZATION
-  account_name      = var.SNOWFLAKE_ACCOUNT
-  user              = var.SNOWFLAKE_USER
-  password          = var.SNOWFLAKE_PASSWORD
-  role              = var.SNOWFLAKE_ROLE
+  organization_name      = var.SNOWFLAKE_ORGANIZATION
+  account_name           = var.SNOWFLAKE_ACCOUNT
+  user                   = var.SNOWFLAKE_USER
+  role                   = var.SNOWFLAKE_ROLE
+  authenticator          = "SNOWFLAKE_JWT"
+  private_key            = file(var.SNOWFLAKE_PRIVATE_KEY_PATH)
+  private_key_passphrase = var.SNOWFLAKE_PRIVATE_KEY_PASSPHRASE
+  warehouse              = var.SNOWFLAKE_WAREHOUSE
 }
