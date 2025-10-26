@@ -18,16 +18,9 @@ variable "SNOWFLAKE_ROLE" {
   type        = string
 }
 
-variable "SNOWFLAKE_PRIVATE_KEY_PATH" {
-  description = "Path to the Snowflake private key file"
+variable "SNOWFLAKE_PRIVATE_KEY" {
+  description = "Snowflake private key content"
   type        = string
-  default     = ""
-}
-
-variable "SNOWFLAKE_PRIVATE_KEY_PASSPHRASE" {
-  description = "Passphrase for the Snowflake private key"
-  type        = string
-  sensitive   = true
   default     = ""
 }
 
