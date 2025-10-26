@@ -61,7 +61,7 @@ locals {
     for schema_name in ["bronze", "silver", "gold"] : {
       name     = schema_name
       database = local.database.name
-      comment  = "${lower(schema_name)} schema for dbt ${local.environment}"
+      comment  = "${schema_name} schema for dbt ${local.environment}"
     }
   ]
 
