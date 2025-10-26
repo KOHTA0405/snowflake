@@ -43,18 +43,26 @@ locals {
   }
 
   account_role = {
-    name    = "DBT_${upper(local.environment)}_ACCOUNT_ROLE"
+    name    = "dbt_${local.environment}_account_role"
     comment = "account role for dbt ${local.environment}"
   }
 
   database_role = {
-    name    = "DBT_${upper(local.environment)}_DB_ROLE"
+    name    = "dbt_${local.environment}_database_role"
     comment = "database role for dbt ${local.environment}"
   }
 
   user = {
-    name    = "DBT_${upper(local.environment)}_USER"
+    name    = "dbt_${local.environment}_user"
     comment = "user for dbt ${local.environment}"
   }
+
+  schemas = [
+    for schema_name in ["bronze", "silver", "gold"] : {
+      name     = schema_name
+      database = local.database.name
+      comment  = "${lower(schema_name)} schema for dbt ${local.environment}"
+    }
+  ]
 
 }
