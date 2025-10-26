@@ -52,4 +52,9 @@ locals {
     comment = "database role for dbt ${local.environment}"
   }
 
+  user = {
+    name    = "DBT_${upper(local.environment)}_USER"
+    comment = "user for dbt ${local.environment}"
+  }
+
 }
