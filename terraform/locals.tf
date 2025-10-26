@@ -47,4 +47,9 @@ locals {
     comment = "account role for dbt ${local.environment}"
   }
 
+  database_role = {
+    name    = "DBT_${upper(local.environment)}_DB_ROLE"
+    comment = "database role for dbt ${local.environment}"
+  }
+
 }
