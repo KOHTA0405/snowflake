@@ -47,9 +47,16 @@ locals {
     comment = "account role for dbt ${local.environment}"
   }
 
+  account_roles = [
+    for role_name in ["administrator", "developer", "analyst"] : {
+      name    = "${role_name}_${local.environment}"
+      comment = "${local.environment} ${role_name} role for account"
+    }
+  ]
+
   database_roles = [
     for role_name in ["write", "create_schema", "read"] : {
-      name    = role_name
+      name    = "${role_name}_${local.environment}"
       comment = "${role_name} role for ${local.environment} database"
     }
   ]

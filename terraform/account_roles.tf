@@ -1,7 +1,8 @@
-module "dbt_account_role" {
-  source = "./modules/account_role"
+module "account_roles" {
+  for_each = { for account_role in local.account_roles : account_role.name => account_role }
+  source   = "./modules/account_role"
 
-  name    = local.account_role.name
-  comment = local.account_role.comment
+  name    = each.value.name
+  comment = each.value.comment
 
 }
