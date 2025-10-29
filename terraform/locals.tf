@@ -47,10 +47,12 @@ locals {
     comment = "account role for dbt ${local.environment}"
   }
 
-  database_role = {
-    name    = "dbt_${local.environment}_database_role"
-    comment = "database role for dbt ${local.environment}"
-  }
+  database_roles = [
+    for role_name in ["write", "create_schema", "read"] : {
+      name    = role_name
+      comment = "${role_name} role for ${local.environment} database"
+    }
+  ]
 
   user = {
     name    = "dbt_${local.environment}_user"
