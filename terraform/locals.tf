@@ -78,12 +78,14 @@ locals {
     }
   }
 
-  for_developer_database_roles = {
+
+
+  database_roles_for_developer = {
     for k, v in local.database_role : k => v
     if contains(["create_schema", "read"], k)
   }
 
-  for_analyst_database_roles = {
+  database_roles_for_analyst = {
     for k, v in local.database_role : k => v
     if contains(["read"], k)
   }
