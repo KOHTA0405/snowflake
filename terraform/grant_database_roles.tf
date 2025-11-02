@@ -1,7 +1,8 @@
 # Grant database USAGE privilege to database roles
 module "grant_privileges_to_database_role" {
-  source   = "./modules/grant_database_role/privileges_to_database"
-  for_each = local.database_role
+  source     = "./modules/grant_database_role/privileges_to_database"
+  for_each   = local.database_role
+  depends_on = [module.database_roles]
 
   database_role_name = module.database_roles[each.key].database_role_fully_qualified_name
   privilege_list     = ["USAGE"]
@@ -10,8 +11,9 @@ module "grant_privileges_to_database_role" {
 
 # Grant schema USAGE privilege to database roles
 module "grant_privileges_to_schema_role" {
-  source   = "./modules/grant_database_role/privileges_to_schema"
-  for_each = local.database_role
+  source     = "./modules/grant_database_role/privileges_to_schema"
+  for_each   = local.database_role
+  depends_on = [module.database_roles]
 
   database_role_name = module.database_roles[each.key].database_role_fully_qualified_name
   privilege_list     = ["USAGE"]
@@ -20,8 +22,9 @@ module "grant_privileges_to_schema_role" {
 
 # Grant privileges to write database_role for all schemas
 module "grant_privileges_to_write_role" {
-  source   = "./modules/grant_database_role/privileges_to_schema_object"
-  for_each = local.schema
+  source     = "./modules/grant_database_role/privileges_to_schema_object"
+  for_each   = local.schema
+  depends_on = [module.database_roles]
 
   database_role_name = module.database_roles["write"].database_role_fully_qualified_name
   privilege_list     = local.privileges_to_database_role["write"]
@@ -31,8 +34,9 @@ module "grant_privileges_to_write_role" {
 
 # Grant privileges to change_schema database_role for all schemas
 module "grant_privileges_to_change_schema_role" {
-  source   = "./modules/grant_database_role/privileges_to_schema"
-  for_each = local.schema
+  source     = "./modules/grant_database_role/privileges_to_schema"
+  for_each   = local.schema
+  depends_on = [module.database_roles]
 
   database_role_name = module.database_roles["change_schema"].database_role_fully_qualified_name
   privilege_list     = local.privileges_to_database_role["change_schema"]
@@ -41,8 +45,9 @@ module "grant_privileges_to_change_schema_role" {
 
 # Grant table privileges to read database_role for all schemas
 module "grant_table_privileges_to_read_role" {
-  source   = "./modules/grant_database_role/privileges_to_schema_object"
-  for_each = local.schema
+  source     = "./modules/grant_database_role/privileges_to_schema_object"
+  for_each   = local.schema
+  depends_on = [module.database_roles]
 
   database_role_name = module.database_roles["read"].database_role_fully_qualified_name
   privilege_list     = local.privileges_to_database_role["read"]
@@ -52,8 +57,9 @@ module "grant_table_privileges_to_read_role" {
 
 # Grant view privileges to read database_role for all schemas
 module "grant_view_privileges_to_read_role" {
-  source   = "./modules/grant_database_role/privileges_to_schema_object"
-  for_each = local.schema
+  source     = "./modules/grant_database_role/privileges_to_schema_object"
+  for_each   = local.schema
+  depends_on = [module.database_roles]
 
   database_role_name = module.database_roles["read"].database_role_fully_qualified_name
   privilege_list     = local.privileges_to_database_role["read"]
@@ -63,8 +69,9 @@ module "grant_view_privileges_to_read_role" {
 
 # Grant database roles to administrator_role
 module "grant_database_role_to_account_role" {
-  source   = "./modules/grant_database_role/databas_role_to_account_role"
-  for_each = local.database_role
+  source     = "./modules/grant_database_role/databas_role_to_account_role"
+  for_each   = local.database_role
+  depends_on = [module.database_roles]
 
   database_role_name = module.database_roles[each.key].database_role_fully_qualified_name
   parent_role_name   = local.account_role["administrator"].name
@@ -72,8 +79,9 @@ module "grant_database_role_to_account_role" {
 
 # Grant database roles to developer_role
 module "grant_database_role_to_developer_role" {
-  source   = "./modules/grant_database_role/databas_role_to_account_role"
-  for_each = local.database_roles_for_developer
+  source     = "./modules/grant_database_role/databas_role_to_account_role"
+  for_each   = local.database_roles_for_developer
+  depends_on = [module.database_roles]
 
   database_role_name = module.database_roles[each.key].database_role_fully_qualified_name
   parent_role_name   = local.account_role["developer"].name
@@ -81,8 +89,9 @@ module "grant_database_role_to_developer_role" {
 
 # Grant database roles to analyst_role
 module "grant_database_role_to_analyst_role" {
-  source   = "./modules/grant_database_role/databas_role_to_account_role"
-  for_each = local.database_roles_for_analyst
+  source     = "./modules/grant_database_role/databas_role_to_account_role"
+  for_each   = local.database_roles_for_analyst
+  depends_on = [module.database_roles]
 
   database_role_name = module.database_roles[each.key].database_role_fully_qualified_name
   parent_role_name   = local.account_role["analyst"].name
