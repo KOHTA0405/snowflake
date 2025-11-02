@@ -1,6 +1,6 @@
 # Grant database USAGE privilege to database roles
 module "grant_privileges_to_database_role" {
-  source     = "./modules/grant_database_role/privileges_to_database"
+  source     = "./modules/grant_database_role/privileges_for_database"
   for_each   = local.database_role
   depends_on = [module.database_roles]
 
@@ -11,7 +11,7 @@ module "grant_privileges_to_database_role" {
 
 # Grant schema USAGE privilege to database roles
 module "grant_privileges_to_schema_role" {
-  source     = "./modules/grant_database_role/privileges_to_schema"
+  source     = "./modules/grant_database_role/privileges_for_schema"
   for_each   = local.database_role
   depends_on = [module.database_roles]
 
@@ -22,7 +22,7 @@ module "grant_privileges_to_schema_role" {
 
 # Grant privileges to write database_role for all schemas
 module "grant_privileges_to_write_role" {
-  source     = "./modules/grant_database_role/privileges_to_schema_object"
+  source     = "./modules/grant_database_role/privileges_for_schema_object"
   for_each   = local.schema
   depends_on = [module.database_roles]
 
@@ -34,7 +34,7 @@ module "grant_privileges_to_write_role" {
 
 # Grant privileges to change_schema database_role for all schemas
 module "grant_privileges_to_change_schema_role" {
-  source     = "./modules/grant_database_role/privileges_to_schema"
+  source     = "./modules/grant_database_role/privileges_for_schema"
   for_each   = local.schema
   depends_on = [module.database_roles]
 
@@ -45,7 +45,7 @@ module "grant_privileges_to_change_schema_role" {
 
 # Grant table privileges to read database_role for all schemas
 module "grant_table_privileges_to_read_role" {
-  source     = "./modules/grant_database_role/privileges_to_schema_object"
+  source     = "./modules/grant_database_role/privileges_for_schema_object"
   for_each   = local.schema
   depends_on = [module.database_roles]
 
@@ -57,7 +57,7 @@ module "grant_table_privileges_to_read_role" {
 
 # Grant view privileges to read database_role for all schemas
 module "grant_view_privileges_to_read_role" {
-  source     = "./modules/grant_database_role/privileges_to_schema_object"
+  source     = "./modules/grant_database_role/privileges_for_schema_object"
   for_each   = local.schema
   depends_on = [module.database_roles]
 
