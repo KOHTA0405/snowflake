@@ -9,7 +9,7 @@ variable "privilege_list" {
   default     = []
 }
 
-variable "schema_name" {
-  description = "Name of the schema."
+variable "database_name" {
+  description = "Name of the database."
   type        = string
 }
