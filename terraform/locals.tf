@@ -103,12 +103,9 @@ locals {
     ]
 
     "change_schema" = [
+      "USAGE",
       "CREATE TABLE",
-      "ALTER TABLE",
-      "DROP TABLE",
-      "CREATE VIEW",
-      "ALTER VIEW",
-      "DROP VIEW"
+      "CREATE VIEW"
     ]
 
     "read" = [
