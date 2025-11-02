@@ -1,4 +1,4 @@
-module "dbt_schemas" {
+module "schemas" {
   source   = "./modules/schema"
   for_each = local.schema
 
@@ -6,5 +6,5 @@ module "dbt_schemas" {
   name     = each.value.name
   comment  = each.value.comment
 
-  depends_on = [module.dbt_database]
+  depends_on = [module.database]
 }

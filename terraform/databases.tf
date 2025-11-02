@@ -1,4 +1,4 @@
-module "dbt_database" {
+module "database" {
   source = "./modules/database"
 
   name    = local.database.name
