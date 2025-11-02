@@ -42,12 +42,26 @@ locals {
     comment = "database for dbt ${local.environment}"
   }
 
-  account_roles = [
-    for role_name in ["administrator", "developer", "analyst"] : {
-      name    = "${role_name}_${local.environment}"
-      comment = "${local.environment} ${role_name} role for account"
+  # account_roles = [
+  #   for role_name in ["administrator", "developer", "analyst"] : {
+  #     name    = "${role_name}_${local.environment}"
+  #     comment = "${local.environment} ${role_name} role for account"
+  #   }
+  # ]
+  account_role = {
+    "administrator" = {
+      name    = "administrator_${local.environment}"
+      comment = "administrator role for ${local.environment} environment"
     }
-  ]
+    "developer" = {
+      name    = "developer_${local.environment}"
+      comment = "developer role for ${local.environment} environment"
+    }
+    "analyst" = {
+      name    = "analyst_${local.environment}"
+      comment = "analyst role for ${local.environment} environment"
+    }
+  }
 
   database_role = {
     "write" = {
@@ -62,6 +76,16 @@ locals {
       name    = "read_${local.environment}"
       comment = "read role for ${local.environment} database"
     }
+  }
+
+  for_developer_database_roles = {
+    for k, v in local.database_role : k => v
+    if contains(["create_schema", "read"], k)
+  }
+
+  for_analyst_database_roles = {
+    for k, v in local.database_role : k => v
+    if contains(["read"], k)
   }
 
   privileges_to_database = ["USAGE"]
