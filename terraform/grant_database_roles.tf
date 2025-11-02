@@ -18,6 +18,49 @@ module "grant_privileges_to_schema_role" {
   database_name      = local.database.name
 }
 
+# Grant privileges to write database_role for all schemas
+module "grant_privileges_to_write_role" {
+  source   = "./modules/grant_database_role/privileges_to_schema_object"
+  for_each = local.schema
+
+  database_role_name = module.database_roles["write"].database_role_fully_qualified_name
+  privilege_list     = local.privileges_to_database_role["write"]
+  object_type        = "TABLES"
+  schema_name        = module.dbt_schemas[each.key].schema_fully_qualified_name
+}
+
+# Grant privileges to change_schema database_role for all schemas
+module "grant_privileges_to_change_schema_role" {
+  source   = "./modules/grant_database_role/privileges_to_schema"
+  for_each = local.schema
+
+  database_role_name = module.database_roles["change_schema"].database_role_fully_qualified_name
+  privilege_list     = local.privileges_to_database_role["change_schema"]
+  database_name      = local.database.name
+}
+
+# Grant table privileges to read database_role for all schemas
+module "grant_table_privileges_to_read_role" {
+  source   = "./modules/grant_database_role/privileges_to_schema_object"
+  for_each = local.schema
+
+  database_role_name = module.database_roles["read"].database_role_fully_qualified_name
+  privilege_list     = local.privileges_to_database_role["read"]
+  object_type        = "TABLES"
+  schema_name        = module.dbt_schemas[each.key].schema_fully_qualified_name
+}
+
+# Grant view privileges to read database_role for all schemas
+module "grant_view_privileges_to_read_role" {
+  source   = "./modules/grant_database_role/privileges_to_schema_object"
+  for_each = local.schema
+
+  database_role_name = module.database_roles["read"].database_role_fully_qualified_name
+  privilege_list     = local.privileges_to_database_role["read"]
+  object_type        = "VIEWS"
+  schema_name        = module.dbt_schemas[each.key].schema_fully_qualified_name
+}
+
 # Grant database roles to administrator_role
 module "grant_database_role_to_account_role" {
   source   = "./modules/grant_database_role/databas_role_to_account_role"
@@ -55,4 +98,8 @@ module "grant_database_role_to_analyst_role" {
 
 # output "test" {
 #   value = local.for_developer_database_roles
+# }
+
+# output "test" {
+#   value = module.dbt_schemas
 # }

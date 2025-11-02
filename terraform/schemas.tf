@@ -1,8 +1,8 @@
 module "dbt_schemas" {
-  for_each = { for schema in local.schemas : schema.name => schema }
   source   = "./modules/schema"
+  for_each = local.schema
 
-  database = each.value.database
+  database = local.database.name
   name     = each.value.name
   comment  = each.value.comment
 

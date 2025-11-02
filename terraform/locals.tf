@@ -116,12 +116,22 @@ locals {
     ]
   }
 
-  schemas = [
-    for schema_name in ["bronze", "silver", "gold"] : {
-      name     = schema_name
+  schema = {
+    "bronze" = {
+      name     = "bronze"
       database = local.database.name
-      comment  = "${schema_name} schema for dbt ${local.environment}"
+      comment  = "bronze schema for dbt ${local.environment}"
     }
-  ]
+    "silver" = {
+      name     = "silver"
+      database = local.database.name
+      comment  = "silver schema for dbt ${local.environment}"
+    }
+    "gold" = {
+      name     = "gold"
+      database = local.database.name
+      comment  = "gold schema for dbt ${local.environment}"
+    }
+  }
 
 }
