@@ -68,9 +68,9 @@ locals {
       name    = "write_${local.environment}"
       comment = "write role for ${local.environment} database"
     }
-    "create_schema" = {
-      name    = "create_schema_${local.environment}"
-      comment = "create_schema role for ${local.environment} database"
+    "change_schema" = {
+      name    = "change_schema_${local.environment}"
+      comment = "change_schema role for ${local.environment} database"
     }
     "read" = {
       name    = "read_${local.environment}"
@@ -91,6 +91,29 @@ locals {
   user = {
     name    = "dbt_${local.environment}_user"
     comment = "user for dbt ${local.environment}"
+  }
+
+  privileges_to_database_role = {
+    "write" = [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE",
+      "TRUNCATE"
+    ]
+
+    "change_schema" = [
+      "CREATE TABLE",
+      "ALTER TABLE",
+      "DROP TABLE",
+      "CREATE VIEW",
+      "ALTER VIEW",
+      "DROP VIEW"
+    ]
+
+    "read" = [
+      "SELECT"
+    ]
   }
 
   schemas = [
