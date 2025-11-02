@@ -49,12 +49,22 @@ locals {
     }
   ]
 
-  database_roles = [
-    for role_name in ["write", "create_schema", "read"] : {
-      name    = "${role_name}_${local.environment}"
-      comment = "${role_name} role for ${local.environment} database"
+  database_role = {
+    "write" = {
+      name    = "write_${local.environment}"
+      comment = "write role for ${local.environment} database"
     }
-  ]
+    "create_schema" = {
+      name    = "create_schema_${local.environment}"
+      comment = "create_schema role for ${local.environment} database"
+    }
+    "read" = {
+      name    = "read_${local.environment}"
+      comment = "read role for ${local.environment} database"
+    }
+  }
+
+  privileges_to_database = ["USAGE"]
 
   user = {
     name    = "dbt_${local.environment}_user"
