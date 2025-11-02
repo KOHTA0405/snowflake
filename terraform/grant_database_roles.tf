@@ -20,7 +20,7 @@ module "grant_database_role_to_account_role" {
 # Grant database roles to developer_role
 module "grant_database_role_to_developer_role" {
   source   = "./modules/grant_database_role/databas_role_to_account_role"
-  for_each = local.for_developer_database_roles
+  for_each = local.database_roles_for_developer
 
   database_role_name = module.database_roles[each.key].database_role_fully_qualified_name
   parent_role_name   = local.account_role["developer"].name
@@ -29,7 +29,7 @@ module "grant_database_role_to_developer_role" {
 # Grant database roles to analyst_role
 module "grant_database_role_to_analyst_role" {
   source   = "./modules/grant_database_role/databas_role_to_account_role"
-  for_each = local.for_analyst_database_roles
+  for_each = local.database_roles_for_analyst
 
   database_role_name = module.database_roles[each.key].database_role_fully_qualified_name
   parent_role_name   = local.account_role["analyst"].name
