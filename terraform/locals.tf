@@ -90,8 +90,6 @@ locals {
     if contains(["read"], k)
   }
 
-  privileges_to_database = ["USAGE"]
-
   user = {
     name    = "dbt_${local.environment}_user"
     comment = "user for dbt ${local.environment}"
