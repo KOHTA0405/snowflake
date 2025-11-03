@@ -21,7 +21,7 @@ variable "SNOWFLAKE_ROLE" {
 variable "SNOWFLAKE_PRIVATE_KEY" {
   description = "Snowflake private key content"
   type        = string
-  default     = ""
+  sensitive   = true
 }
 
 variable "SNOWFLAKE_WAREHOUSE" {
