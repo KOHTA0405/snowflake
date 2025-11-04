@@ -38,7 +38,7 @@ locals {
   }
 
   database = {
-    name    = "${local.environment}"
+    name    = local.environment
     comment = "database for dbt ${local.environment}"
   }
 
