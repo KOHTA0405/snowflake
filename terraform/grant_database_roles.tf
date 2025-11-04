@@ -69,7 +69,7 @@ module "grant_view_privileges_to_read_role" {
 
 # Grant database roles to administrator_role
 module "grant_database_role_to_account_role" {
-  source     = "./modules/grant_database_role/databas_role_to_account_role"
+  source     = "./modules/grant_database_role/database_role_to_account_role"
   for_each   = local.database_role
   depends_on = [module.database_roles]
 
@@ -79,7 +79,7 @@ module "grant_database_role_to_account_role" {
 
 # Grant database roles to developer_role
 module "grant_database_role_to_developer_role" {
-  source     = "./modules/grant_database_role/databas_role_to_account_role"
+  source     = "./modules/grant_database_role/database_role_to_account_role"
   for_each   = local.database_roles_for_developer
   depends_on = [module.database_roles]
 
@@ -89,7 +89,7 @@ module "grant_database_role_to_developer_role" {
 
 # Grant database roles to analyst_role
 module "grant_database_role_to_analyst_role" {
-  source     = "./modules/grant_database_role/databas_role_to_account_role"
+  source     = "./modules/grant_database_role/database_role_to_account_role"
   for_each   = local.database_roles_for_analyst
   depends_on = [module.database_roles]
 
