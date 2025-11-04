@@ -74,7 +74,7 @@ locals {
 
   database_roles_for_developer = {
     for k, v in local.database_role : k => v
-    if contains(["create_schema", "read"], k)
+    if contains(["change_schema", "read"], k)
   }
 
   database_roles_for_analyst = {
