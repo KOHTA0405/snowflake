@@ -13,10 +13,10 @@ variable "SNOWFLAKE_USER" {
   type        = string
 }
 
-variable "SNOWFLAKE_ROLE" {
-  description = "Snowflake role"
-  type        = string
-}
+# variable "SNOWFLAKE_ROLE" {
+#   description = "Snowflake role"
+#   type        = string
+# }
 
 variable "SNOWFLAKE_PRIVATE_KEY" {
   description = "Snowflake private key content"

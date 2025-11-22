@@ -4,6 +4,10 @@ module "grant_account_role_to_sysadmin" {
   depends_on = [module.account_roles]
 
   role_name = each.value.name
+
+  providers = {
+    snowflake.security_admin = snowflake.security_admin
+  }
 }
 
 module "grant_developer_role_to_kohta" {
@@ -12,6 +16,10 @@ module "grant_developer_role_to_kohta" {
 
   role_name = local.account_role["developer"].name
   user_name = module.kohta_user.name
+
+  providers = {
+    snowflake.security_admin = snowflake.security_admin
+  }
 }
 
 module "grant_administrator_role_to_dbt_user" {
@@ -20,4 +28,8 @@ module "grant_administrator_role_to_dbt_user" {
 
   role_name = local.account_role["administrator"].name
   user_name = module.dbt_user.name
+
+  providers = {
+    snowflake.security_admin = snowflake.security_admin
+  }
 }

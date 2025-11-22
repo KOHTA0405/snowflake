@@ -1,4 +1,5 @@
 resource "snowflake_user" "this" {
-  name    = var.name
-  comment = var.comment
+  provider = snowflake.user_admin
+  name     = var.name
+  comment  = var.comment
 }

@@ -5,4 +5,8 @@ module "database_roles" {
   database_name = module.database.name
   name          = each.value.name
   comment       = each.value.comment
+
+  providers = {
+    snowflake.sysadmin = snowflake.sysadmin
+  }
 }

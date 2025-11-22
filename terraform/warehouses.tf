@@ -7,4 +7,8 @@ module "dbt_warehouse" {
   auto_resume         = local.warehouse.auto_resume
   initially_suspended = local.warehouse.initially_suspended
   comment             = local.warehouse.comment
+
+  providers = {
+    snowflake.sysadmin = snowflake.sysadmin
+  }
 }

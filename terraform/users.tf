@@ -3,6 +3,10 @@ module "dbt_user" {
 
   name    = local.user.name
   comment = local.user.comment
+
+  providers = {
+    snowflake.user_admin = snowflake.user_admin
+  }
 }
 
 module "kohta_user" {
@@ -10,4 +14,8 @@ module "kohta_user" {
 
   name    = "KOHTA"
   comment = "User for KOHTA"
+
+  providers = {
+    snowflake.user_admin = snowflake.user_admin
+  }
 }

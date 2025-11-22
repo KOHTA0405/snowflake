@@ -5,4 +5,7 @@ module "account_roles" {
   name    = each.value.name
   comment = each.value.comment
 
+  providers = {
+    snowflake.security_admin = snowflake.security_admin
+  }
 }

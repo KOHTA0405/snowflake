@@ -1,4 +1,5 @@
 resource "snowflake_warehouse" "this" {
+  provider            = snowflake.sysadmin
   name                = var.name
   warehouse_size      = var.size
   auto_suspend        = var.auto_suspend

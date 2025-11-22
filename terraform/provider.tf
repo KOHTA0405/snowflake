@@ -14,11 +14,37 @@ terraform {
   }
 }
 
+# USERADMINロール用のエイリアス（ユーザー管理専用）
 provider "snowflake" {
+  alias             = "user_admin"
   organization_name = var.SNOWFLAKE_ORGANIZATION
   account_name      = var.SNOWFLAKE_ACCOUNT
   user              = var.SNOWFLAKE_USER
-  role              = var.SNOWFLAKE_ROLE
+  role              = "USERADMIN"
+  authenticator     = "SNOWFLAKE_JWT"
+  private_key       = var.SNOWFLAKE_PRIVATE_KEY
+  warehouse         = var.SNOWFLAKE_WAREHOUSE
+}
+
+# SECURITYADMINロール用のエイリアス（ロール・権限管理専用）
+provider "snowflake" {
+  alias             = "security_admin"
+  organization_name = var.SNOWFLAKE_ORGANIZATION
+  account_name      = var.SNOWFLAKE_ACCOUNT
+  user              = var.SNOWFLAKE_USER
+  role              = "SECURITYADMIN"
+  authenticator     = "SNOWFLAKE_JWT"
+  private_key       = var.SNOWFLAKE_PRIVATE_KEY
+  warehouse         = var.SNOWFLAKE_WAREHOUSE
+}
+
+# SYSADMINロール用のエイリアス（データベース・ウェアハウス管理専用）
+provider "snowflake" {
+  alias             = "sysadmin"
+  organization_name = var.SNOWFLAKE_ORGANIZATION
+  account_name      = var.SNOWFLAKE_ACCOUNT
+  user              = var.SNOWFLAKE_USER
+  role              = "SYSADMIN"
   authenticator     = "SNOWFLAKE_JWT"
   private_key       = var.SNOWFLAKE_PRIVATE_KEY
   warehouse         = var.SNOWFLAKE_WAREHOUSE
