@@ -5,3 +5,11 @@ module "grant_account_role_to_sysadmin" {
 
   role_name = each.value.name
 }
+
+module "grant_developer_role_to_kohta" {
+  source     = "./modules/grant_account_role/account_role_to_user"
+  depends_on = [module.account_roles, module.kohta_user]
+
+  role_name = local.account_role["developer"].name
+  user_name = module.kohta_user.name
+}
