@@ -26,7 +26,7 @@ locals {
   )
 
   warehouse = {
-    name                = "dbt_${local.environment}_wh"
+    name                = "DBT_${upper(local.environment)}_WH"
     size                = local.environment_config.warehouse_size
     auto_suspend        = local.environment_config.auto_suspend_seconds
     auto_resume         = local.environment_config.auto_resume
@@ -38,36 +38,36 @@ locals {
   }
 
   database = {
-    name    = local.environment
+    name    = upper(local.environment)
     comment = "database for dbt ${local.environment}"
   }
 
   account_role = {
     "administrator" = {
-      name    = "administrator_${local.environment}"
+      name    = "ADMINISTRATOR_${upper(local.environment)}"
       comment = "administrator role for ${local.environment} environment"
     }
     "developer" = {
-      name    = "developer_${local.environment}"
+      name    = "DEVELOPER_${upper(local.environment)}"
       comment = "developer role for ${local.environment} environment"
     }
     "analyst" = {
-      name    = "analyst_${local.environment}"
+      name    = "ANALYST_${upper(local.environment)}"
       comment = "analyst role for ${local.environment} environment"
     }
   }
 
   database_role = {
     "write" = {
-      name    = "write_${local.environment}"
+      name    = "WRITE_${upper(local.environment)}"
       comment = "write role for ${local.environment} database"
     }
     "change_schema" = {
-      name    = "change_schema_${local.environment}"
+      name    = "CHANGE_SCHEMA_${upper(local.environment)}"
       comment = "change_schema role for ${local.environment} database"
     }
     "read" = {
-      name    = "read_${local.environment}"
+      name    = "READ_${upper(local.environment)}"
       comment = "read role for ${local.environment} database"
     }
   }
@@ -83,7 +83,7 @@ locals {
   }
 
   user = {
-    name    = "dbt_${local.environment}_user"
+    name    = "DBT_${upper(local.environment)}_USER"
     comment = "user for dbt ${local.environment}"
   }
 
@@ -118,17 +118,17 @@ locals {
 
   schema = {
     "bronze" = {
-      name     = "bronze"
+      name     = "BRONZE"
       database = local.database.name
       comment  = "bronze schema for dbt ${local.environment}"
     }
     "silver" = {
-      name     = "silver"
+      name     = "SILVER"
       database = local.database.name
       comment  = "silver schema for dbt ${local.environment}"
     }
     "gold" = {
-      name     = "gold"
+      name     = "GOLD"
       database = local.database.name
       comment  = "gold schema for dbt ${local.environment}"
     }
