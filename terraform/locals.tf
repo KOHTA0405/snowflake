@@ -99,7 +99,16 @@ locals {
     "change_schema" = [
       "USAGE",
       "CREATE TABLE",
-      "CREATE VIEW"
+      "CREATE VIEW",
+      "CREATE FILE FORMAT",
+      "CREATE STAGE",
+      "CREATE FUNCTION",
+      "CREATE PROCEDURE",
+      "CREATE SEQUENCE",
+      "CREATE PIPE",
+      "CREATE STREAM",
+      "CREATE TASK",
+      "CREATE SNAPSHOT"
     ]
 
     "read" = [
