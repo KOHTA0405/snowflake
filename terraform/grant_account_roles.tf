@@ -47,3 +47,17 @@ module "grant_database_usage_to_account_roles" {
     snowflake.security_admin = snowflake.security_admin
   }
 }
+
+# Grant warehouse USAGE privilege to account roles
+module "grant_warehouse_usage_to_account_roles" {
+  source   = "./modules/grant_account_role/privileges_for_warehouse"
+  for_each = local.account_role
+
+  account_role_name = module.account_roles[each.key].name
+  privilege_list    = ["USAGE"]
+  warehouse_name    = module.dbt_warehouse.name
+
+  providers = {
+    snowflake.security_admin = snowflake.security_admin
+  }
+}
