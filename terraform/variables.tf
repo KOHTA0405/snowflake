@@ -23,3 +23,17 @@ variable "SNOWFLAKE_WAREHOUSE" {
   description = "Snowflake warehouse"
   type        = string
 }
+
+variable "DBT_USER_RSA_PUBLIC_KEY" {
+  description = "RSA public key for dbt user. Must be on 1 line without header and trailer."
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
+variable "LIGHTDASH_USER_RSA_PUBLIC_KEY" {
+  description = "RSA public key for lightdash user. Must be on 1 line without header and trailer."
+  type        = string
+  default     = null
+  sensitive   = true
+}

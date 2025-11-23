@@ -1,5 +1,6 @@
 resource "snowflake_user" "this" {
-  provider = snowflake.user_admin
-  name     = var.name
-  comment  = var.comment
+  provider       = snowflake.user_admin
+  name           = var.name
+  comment        = var.comment
+  rsa_public_key = var.rsa_public_key
 }
