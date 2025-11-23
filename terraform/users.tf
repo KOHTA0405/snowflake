@@ -19,3 +19,14 @@ module "kohta_user" {
     snowflake.user_admin = snowflake.user_admin
   }
 }
+
+module "lightdash_user" {
+  source = "./modules/user"
+
+  name    = local.lightdash_user.name
+  comment = local.lightdash_user.comment
+
+  providers = {
+    snowflake.user_admin = snowflake.user_admin
+  }
+}

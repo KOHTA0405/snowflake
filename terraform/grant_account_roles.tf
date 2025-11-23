@@ -61,3 +61,44 @@ module "grant_warehouse_usage_to_account_roles" {
     snowflake.security_admin = snowflake.security_admin
   }
 }
+
+# Grant lightdash role to lightdash user
+module "grant_lightdash_role_to_lightdash_user" {
+  source     = "./modules/grant_account_role/account_role_to_user"
+  depends_on = [module.account_roles, module.lightdash_user]
+
+  role_name = local.account_role["lightdash"].name
+  user_name = module.lightdash_user.name
+
+  providers = {
+    snowflake.security_admin = snowflake.security_admin
+  }
+}
+
+# Grant database USAGE privilege to lightdash role
+module "grant_database_usage_to_lightdash_role" {
+  source     = "./modules/grant_account_role/privileges_for_database"
+  depends_on = [module.account_roles]
+
+  account_role_name = module.account_roles["lightdash"].name
+  privilege_list    = ["USAGE"]
+  database_name     = local.database.name
+
+  providers = {
+    snowflake.security_admin = snowflake.security_admin
+  }
+}
+
+# Grant warehouse USAGE privilege to lightdash role
+module "grant_warehouse_usage_to_lightdash_role" {
+  source     = "./modules/grant_account_role/privileges_for_warehouse"
+  depends_on = [module.account_roles, module.lightdash_warehouse]
+
+  account_role_name = module.account_roles["lightdash"].name
+  privilege_list    = ["USAGE"]
+  warehouse_name    = module.lightdash_warehouse.name
+
+  providers = {
+    snowflake.security_admin = snowflake.security_admin
+  }
+}

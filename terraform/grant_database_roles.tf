@@ -110,6 +110,19 @@ module "grant_database_role_to_analyst_role" {
   }
 }
 
+# Grant database roles to lightdash_role
+module "grant_database_role_to_lightdash_role" {
+  source   = "./modules/grant_database_role/database_role_to_account_role"
+  for_each = local.database_roles_for_lightdash
+
+  database_role_name = module.database_roles[each.key].database_role_fully_qualified_name
+  parent_role_name   = local.account_role["lightdash"].name
+
+  providers = {
+    snowflake.security_admin = snowflake.security_admin
+  }
+}
+
 # output "test" {
 #   value = {
 #     for k, v in local.database_role : k => v

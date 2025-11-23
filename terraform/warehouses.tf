@@ -12,3 +12,18 @@ module "dbt_warehouse" {
     snowflake.sysadmin = snowflake.sysadmin
   }
 }
+
+module "lightdash_warehouse" {
+  source = "./modules/warehouse"
+
+  name                = local.lightdash_warehouse.name
+  size                = local.lightdash_warehouse.size
+  auto_suspend        = local.lightdash_warehouse.auto_suspend
+  auto_resume         = local.lightdash_warehouse.auto_resume
+  initially_suspended = local.lightdash_warehouse.initially_suspended
+  comment             = local.lightdash_warehouse.comment
+
+  providers = {
+    snowflake.sysadmin = snowflake.sysadmin
+  }
+}

@@ -55,6 +55,10 @@ locals {
       name    = "ANALYST_${upper(local.environment)}"
       comment = "analyst role for ${local.environment} environment"
     }
+    "lightdash" = {
+      name    = "LIGHTDASH_${upper(local.environment)}"
+      comment = "lightdash role for ${local.environment} environment"
+    }
   }
 
   database_role = {
@@ -82,9 +86,31 @@ locals {
     if contains(["read"], k)
   }
 
+  database_roles_for_lightdash = {
+    for k, v in local.database_role : k => v
+    if contains(["read"], k)
+  }
+
   user = {
     name    = "DBT_${upper(local.environment)}_USER"
     comment = "user for dbt ${local.environment}"
+  }
+
+  lightdash_user = {
+    name    = "LIGHTDASH_${upper(local.environment)}_USER"
+    comment = "user for lightdash ${local.environment}"
+  }
+
+  lightdash_warehouse = {
+    name                = "LIGHTDASH_${upper(local.environment)}_WH"
+    size                = local.environment_config.warehouse_size
+    auto_suspend        = local.environment_config.auto_suspend_seconds
+    auto_resume         = local.environment_config.auto_resume
+    initially_suspended = local.environment_config.initially_suspended
+    comment = coalesce(
+      local.environment_config.warehouse_comment,
+      "warehouse for lightdash ${local.environment} workloads"
+    )
   }
 
   privileges_to_database_role = {
