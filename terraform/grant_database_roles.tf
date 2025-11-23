@@ -1,17 +1,3 @@
-# Grant database USAGE privilege to database roles
-module "grant_privileges_to_database_role" {
-  source   = "./modules/grant_database_role/privileges_for_database"
-  for_each = local.database_role
-
-  database_role_name = module.database_roles[each.key].database_role_fully_qualified_name
-  privilege_list     = ["USAGE"]
-  database_name      = local.database.name
-
-  providers = {
-    snowflake.security_admin = snowflake.security_admin
-  }
-}
-
 # Grant schema USAGE privilege to database roles
 module "grant_privileges_to_schema_role" {
   source   = "./modules/grant_database_role/privileges_for_schema"
