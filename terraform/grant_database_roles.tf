@@ -123,6 +123,22 @@ module "grant_database_role_to_lightdash_role" {
   }
 }
 
+# Grant SELECT privileges on all ACCOUNT_USAGE views to administrator_role
+# This provides access to ACCOUNT_USAGE schema views for usage and billing information
+module "grant_account_usage_views_to_administrator_role" {
+  source     = "./modules/grant_account_role/privileges_for_schema_object"
+  depends_on = [module.account_roles]
+
+  account_role_name           = module.account_roles["administrator"].name
+  privilege_list              = ["SELECT"]
+  object_type_plural          = "VIEWS"
+  schema_fully_qualified_name = "SNOWFLAKE.ACCOUNT_USAGE"
+
+  providers = {
+    snowflake.security_admin = snowflake.security_admin
+  }
+}
+
 # output "test" {
 #   value = {
 #     for k, v in local.database_role : k => v
