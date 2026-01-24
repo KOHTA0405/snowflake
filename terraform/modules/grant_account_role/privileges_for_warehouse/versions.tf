@@ -3,7 +3,7 @@ terraform {
   required_providers {
     snowflake = {
       source                = "snowflakedb/snowflake"
-      version               = "~> 2.3.0"
+      version               = "~> 2.12.0"
       configuration_aliases = [snowflake.security_admin]
     }
   }
