@@ -31,3 +31,9 @@ variable "initially_suspended" {
   type        = bool
   default     = true
 }
+
+variable "generation" {
+  description = "Warehouse generation. Valid values are '1' or '2'. Only available for STANDARD warehouse type. Gen2 provides improved performance for analytics and data engineering workloads."
+  type        = string
+  default     = null
+}

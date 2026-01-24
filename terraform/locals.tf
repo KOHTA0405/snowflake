@@ -4,6 +4,7 @@ locals {
 
   environment_defaults = {
     warehouse_size       = "XSMALL"
+    warehouse_generation = "2"  # Gen2 for improved performance
     auto_suspend_seconds = 300
     auto_resume          = true
     initially_suspended  = true
