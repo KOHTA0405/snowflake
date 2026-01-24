@@ -123,6 +123,38 @@ module "grant_database_role_to_lightdash_role" {
   }
 }
 
+# Grant SNOWFLAKE database roles to administrator_role for ACCOUNT_USAGE and ORGANIZATION_USAGE access
+# These are pre-existing system-defined database roles in the SNOWFLAKE database
+# USAGE_VIEWER: Access to historical usage information (ACCOUNT_USAGE views)
+# OBJECT_VIEWER: Access to object metadata (ACCOUNT_USAGE views)
+# These roles provide access to ACCOUNT_USAGE and ORGANIZATION_USAGE schemas
+
+# Grant USAGE_VIEWER database role for usage and billing information
+module "grant_snowflake_usage_viewer_to_administrator_role" {
+  source     = "./modules/grant_database_role/database_role_to_account_role"
+  depends_on = [module.account_roles]
+
+  database_role_name = "\"SNOWFLAKE\".\"USAGE_VIEWER\""
+  parent_role_name   = local.account_role["administrator"].name
+
+  providers = {
+    snowflake.security_admin = snowflake.security_admin
+  }
+}
+
+# Grant OBJECT_VIEWER database role for object metadata
+module "grant_snowflake_object_viewer_to_administrator_role" {
+  source     = "./modules/grant_database_role/database_role_to_account_role"
+  depends_on = [module.account_roles]
+
+  database_role_name = "\"SNOWFLAKE\".\"OBJECT_VIEWER\""
+  parent_role_name   = local.account_role["administrator"].name
+
+  providers = {
+    snowflake.security_admin = snowflake.security_admin
+  }
+}
+
 # output "test" {
 #   value = {
 #     for k, v in local.database_role : k => v
