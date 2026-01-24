@@ -16,6 +16,16 @@ locals {
       database = local.database.name
       comment  = "gold schema for dbt ${local.environment}"
     }
+    "dbt_snowflake_monitoring" = {
+      name     = "DBT_SNOWFLAKE_MONITORING"
+      database = local.database.name
+      comment  = "dbt snowflake monitoring schema for ${local.environment}"
+    }
+    "elementary" = {
+      name     = "ELEMENTARY"
+      database = local.database.name
+      comment  = "elementary monitoring schema for ${local.environment}"
+    }
   }
 }
 
