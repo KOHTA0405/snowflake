@@ -102,3 +102,16 @@ module "grant_warehouse_usage_to_lightdash_role" {
     snowflake.security_admin = snowflake.security_admin
   }
 }
+
+# Grant IMPORTED PRIVILEGES on SNOWFLAKE database to administrator role
+# Required for accessing ACCOUNT_USAGE and ORGANIZATION_USAGE schemas
+# SNOWFLAKE is an imported database, so we must use IMPORTED PRIVILEGES instead of individual privileges
+resource "snowflake_grant_privileges_to_account_role" "grant_snowflake_imported_privileges_to_administrator_role" {
+  provider          = snowflake.security_admin
+  account_role_name = module.account_roles["administrator"].name
+  privileges        = ["IMPORTED PRIVILEGES"]
+  on_account_object {
+    object_type = "DATABASE"
+    object_name = "SNOWFLAKE"
+  }
+}
