@@ -54,7 +54,7 @@ module "grant_warehouse_usage_to_account_roles" {
   for_each = local.account_role
 
   account_role_name = module.account_roles[each.key].name
-  privilege_list    = ["USAGE"]
+  privilege_list    = each.key == "developer" ? ["USAGE", "MONITOR"] : ["USAGE"]
   warehouse_name    = module.dbt_warehouse.name
 
   providers = {
@@ -96,6 +96,20 @@ module "grant_warehouse_usage_to_lightdash_role" {
 
   account_role_name = module.account_roles["lightdash"].name
   privilege_list    = ["USAGE"]
+  warehouse_name    = module.lightdash_warehouse.name
+
+  providers = {
+    snowflake.security_admin = snowflake.security_admin
+  }
+}
+
+# Grant warehouse USAGE and MONITOR privilege to developer role on lightdash warehouse
+module "grant_lightdash_warehouse_to_developer_role" {
+  source     = "./modules/grant_account_role/privileges_for_warehouse"
+  depends_on = [module.account_roles, module.lightdash_warehouse]
+
+  account_role_name = module.account_roles["developer"].name
+  privilege_list    = ["USAGE", "MONITOR"]
   warehouse_name    = module.lightdash_warehouse.name
 
   providers = {
