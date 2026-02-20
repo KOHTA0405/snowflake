@@ -1,0 +1,13 @@
+---
+alwaysApply: true
+---
+
+# コーディング規約
+- terraformのベストプラクティスに準拠すること
+- 使用するproviderは "snowflakedb/snowflake" とする
+- "Snowflake-Labs/snowflake"のproviderは使用してはならない
+- resource・data・その他のリソースは https://registry.terraform.io/providers/snowflakedb/snowflake/latest/docs に記載されているもののみを使用すること
+
+
+# Snowflakeオブジェクト
+- 作成するリソースや、権限管理については、Snowflakeのベストプラクティスに準拠すること
