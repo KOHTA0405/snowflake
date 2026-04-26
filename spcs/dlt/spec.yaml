@@ -1,0 +1,14 @@
+spec:
+  containers:
+    - name: dlt-pipeline
+      image: szebenz-os44603.registry.snowflakecomputing.com/dlt_demo/public/my_repo/dlt-pipeline:latest
+      secrets:
+        - snowflakeSecret: dlt_demo.public.dlt_snowflake_user
+          envVarName: SNOWFLAKE_USER
+        - snowflakeSecret: dlt_demo.public.dlt_snowflake_private_key
+          envVarName: SNOWFLAKE_PRIVATE_KEY
+      env:
+        SNOWFLAKE_HOST: "szebenz-os44603"
+        SNOWFLAKE_DATABASE: "dlt_demo"
+        SNOWFLAKE_WAREHOUSE: "dlt_wh"
+        SNOWFLAKE_ROLE: "dlt_role"
