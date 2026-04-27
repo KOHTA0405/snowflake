@@ -53,7 +53,7 @@ jobs:
 
       - name: Debug Docker credentials
         run: |
-          jq '{auths: (.auths // {} | keys), credsStore: .credsStore, credHelpers: .credHelpers}' ~/.docker/config.json
+          jq '.auths | to_entries[] | {registry: .key, fields: (.value | keys), authLen: (.value.auth // "" | length), tokenLen: (.value.identitytoken // "" | length)}' ~/.docker/config.json
 
       - name: Build Docker image
         run: |
