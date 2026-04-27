@@ -288,6 +288,12 @@ GRANT READ, WRITE ON IMAGE REPOSITORY dlt_demo.public.my_repo TO ROLE <CLI用ロ
 
 ### Docker・イメージ関連
 
+**CI（GitHub Actions）でのイメージ push 時にレジストリ URL は小文字でなければならない**
+- `snow spcs image-registry login` が `~/.docker/config.json` に保存する認証情報のキーは常に小文字（例: `szebenz-os44603.registry.snowflakecomputing.com`）
+- GitHub Secrets に `SNOWFLAKE_ORGANIZATION` / `SNOWFLAKE_ACCOUNT` を大文字で登録している場合、レジストリ URL が大文字になり Docker の認証情報検索でキーが一致しなくなる
+- Docker は認証情報を見つけられず Authorization ヘッダーを送らないため `UNAUTHORIZED_AUTHZ_HEADER_ABSENT` エラーが発生する
+- ワークフロー内で `echo "REGISTRY=${REGISTRY,,}" >> $GITHUB_ENV` により小文字に変換して解決できる
+
 **Apple Silicon Mac では `--platform linux/amd64` が必要**
 - 指定しないと SPCS 上で `exec format error` が発生してコンテナが起動しない
 - SPCS は `amd64` アーキテクチャのみ対応
@@ -375,3 +381,28 @@ GRANT READ, WRITE ON IMAGE REPOSITORY dlt_demo.public.my_repo TO ROLE <CLI用ロ
 - `AUTO_SUSPEND_SECS = 300` でコンピュートプールを自動停止
 - バッチ処理なので常駐 Service ではなく **Job**（`EXECUTE JOB SERVICE`）として実行
   - Job は処理完了後にコンテナが終了するため、長時間課金が発生しない
+
+---
+
+## 今後の改善点
+
+### CI のビルドキャッシュ
+
+現在の GitHub Actions ワークフローでは Docker イメージを毎回イチから構築している。依存ライブラリが増えてビルド時間が長くなったら `docker/build-push-action` に切り替えてキャッシュを有効にすることを検討する。
+
+```yaml
+- uses: docker/setup-buildx-action@v3
+
+- uses: docker/build-push-action@v6
+  with:
+    context: ./spcs/dlt
+    platforms: linux/amd64
+    push: true
+    tags: |
+      ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:${{ github.sha }}
+      ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:latest
+    cache-from: type=gha
+    cache-to: type=gha,mode=max
+```
+
+`type=gha` で GitHub Actions のキャッシュストレージにレイヤーを保存する。`pipeline.py` のみの変更であれば `pip install` レイヤーがキャッシュされるためビルドが高速になる。

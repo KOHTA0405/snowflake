@@ -43,6 +43,18 @@ jobs:
           EOF
           chmod 600 ~/.snowflake/config.toml
 
+      # Snowflake のイメージレジストリ URL は小文字でなければならない。
+      # snow spcs image-registry login が保存する認証情報のキーは常に小文字だが、
+      # GitHub Secrets の SNOWFLAKE_ORGANIZATION / SNOWFLAKE_ACCOUNT が大文字の場合、
+      # REGISTRY が大文字になり Docker の認証情報検索が一致せず push が失敗する。
+      - name: Normalize registry URL to lowercase
+        run: echo "REGISTRY=${REGISTRY,,}" >> $GITHUB_ENV
+
+      - name: Configure Docker credentials store
+        run: |
+          mkdir -p ~/.docker
+          echo '{}' > ~/.docker/config.json
+
       - name: Docker login to Snowflake registry
         run: snow spcs image-registry login --connection ci
 
