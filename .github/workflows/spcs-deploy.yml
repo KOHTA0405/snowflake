@@ -43,6 +43,11 @@ jobs:
           EOF
           chmod 600 ~/.snowflake/config.toml
 
+      - name: Configure Docker credentials store
+        run: |
+          mkdir -p ~/.docker
+          echo '{}' > ~/.docker/config.json
+
       - name: Docker login to Snowflake registry
         run: snow spcs image-registry login --connection ci
 
