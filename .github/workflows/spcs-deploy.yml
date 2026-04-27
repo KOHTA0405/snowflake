@@ -51,6 +51,21 @@ jobs:
       - name: Docker login to Snowflake registry
         run: snow spcs image-registry login --connection ci
 
+      - name: Debug Docker credentials
+        run: |
+          python3 -c "
+import json
+with open('/home/runner/.docker/config.json') as f:
+    d = json.load(f)
+safe = {}
+for k, v in d.items():
+    if k == 'auths':
+        safe[k] = {registry: '***' for registry in v}
+    else:
+        safe[k] = v
+print(json.dumps(safe, indent=2))
+"
+
       - name: Build Docker image
         run: |
           docker build --platform linux/amd64 \
