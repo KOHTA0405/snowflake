@@ -381,3 +381,28 @@ GRANT READ, WRITE ON IMAGE REPOSITORY dlt_demo.public.my_repo TO ROLE <CLI用ロ
 - `AUTO_SUSPEND_SECS = 300` でコンピュートプールを自動停止
 - バッチ処理なので常駐 Service ではなく **Job**（`EXECUTE JOB SERVICE`）として実行
   - Job は処理完了後にコンテナが終了するため、長時間課金が発生しない
+
+---
+
+## 今後の改善点
+
+### CI のビルドキャッシュ
+
+現在の GitHub Actions ワークフローでは Docker イメージを毎回イチから構築している。依存ライブラリが増えてビルド時間が長くなったら `docker/build-push-action` に切り替えてキャッシュを有効にすることを検討する。
+
+```yaml
+- uses: docker/setup-buildx-action@v3
+
+- uses: docker/build-push-action@v6
+  with:
+    context: ./spcs/dlt
+    platforms: linux/amd64
+    push: true
+    tags: |
+      ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:${{ github.sha }}
+      ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:latest
+    cache-from: type=gha
+    cache-to: type=gha,mode=max
+```
+
+`type=gha` で GitHub Actions のキャッシュストレージにレイヤーを保存する。`pipeline.py` のみの変更であれば `pip install` レイヤーがキャッシュされるためビルドが高速になる。
