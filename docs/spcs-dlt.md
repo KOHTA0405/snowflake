@@ -375,6 +375,48 @@ GRANT READ, WRITE ON IMAGE REPOSITORY dlt_demo.public.my_repo TO ROLE <CLI用ロ
 
 ---
 
+### Terraform 関連
+
+**Terraform の Task は `dlt_role` ではなく `sysadmin` プロバイダーで作成するとすべての権限を手動付与する必要がある**
+
+- `dlt_demo` のオブジェクト（Compute Pool・Stage・Secret・Integration・Image Repository）はすべて `dlt_role` の権限体系で作られている
+- Terraform の `snowflake_task` を `sysadmin` プロバイダーで作成すると、Task のオーナーが SYSADMIN になる
+- SYSADMIN は `dlt_role` が管理するオブジェクトへのアクセス権を持たないため、タスク実行時に以下の権限を1つずつ手動付与する必要があった
+
+```sql
+GRANT EXECUTE TASK ON ACCOUNT TO ROLE SYSADMIN;
+GRANT USAGE ON COMPUTE POOL dlt_pool TO ROLE SYSADMIN;
+GRANT CREATE SERVICE ON SCHEMA dlt_demo.public TO ROLE SYSADMIN;
+GRANT READ ON STAGE dlt_demo.public.spcs_specs TO ROLE SYSADMIN;
+GRANT USAGE ON INTEGRATION jsonplaceholder_integration TO ROLE SYSADMIN;
+GRANT READ ON IMAGE REPOSITORY dlt_demo.public.my_repo TO ROLE SYSADMIN;
+GRANT READ ON SECRET dlt_demo.public.dlt_snowflake_user TO ROLE SYSADMIN;
+GRANT READ ON SECRET dlt_demo.public.dlt_snowflake_private_key TO ROLE SYSADMIN;
+```
+
+- 本来は `dlt_role` プロバイダーエイリアスを使って Task を作成すれば、これらの権限付与は不要（→「今後の改善点」参照）
+
+---
+
+**`snowflakedb/snowflake` provider v2.x では識別子を大文字で指定する**
+
+- provider v2.x はすべての識別子をクォートして Snowflake に送るため、値が大文字・小文字そのままで扱われる
+- Snowflake はクォートなしで作成したオブジェクト名を内部的に大文字で保存する
+- Terraform 側で `database = "dlt_demo"` と小文字で書くと `"dlt_demo"` として送られ、実際のオブジェクト `DLT_DEMO` が見つからず `object does not exist or not authorized` エラーになる
+- `database`・`schema`・`warehouse`・`name` などの識別子はすべて大文字で記述する
+
+```hcl
+# NG
+database = "dlt_demo"
+schema   = "public"
+
+# OK
+database = "DLT_DEMO"
+schema   = "PUBLIC"
+```
+
+---
+
 ## コスト最適化
 
 - `INSTANCE_FAMILY = CPU_X64_XS`（最小構成）を使用
@@ -385,6 +427,34 @@ GRANT READ, WRITE ON IMAGE REPOSITORY dlt_demo.public.my_repo TO ROLE <CLI用ロ
 ---
 
 ## 今後の改善点
+
+### Terraform Task のプロバイダーを `dlt_role` に切り替える
+
+現状は `sysadmin` プロバイダーで Task を作成しており、SYSADMIN に対して個別に権限を付与している。`dlt_role` は `dlt_demo` のすべてのオブジェクトを管理しているため、`dlt_role` プロバイダーで Task を作成すれば追加の権限付与が不要になる。
+
+**`terraform/provider.tf` に追加：**
+```hcl
+provider "snowflake" {
+  alias             = "dlt_role"
+  organization_name = var.SNOWFLAKE_ORGANIZATION
+  account_name      = var.SNOWFLAKE_ACCOUNT
+  user              = var.SNOWFLAKE_USER
+  role              = "dlt_role"
+  authenticator     = "SNOWFLAKE_JWT"
+  private_key       = var.SNOWFLAKE_PRIVATE_KEY
+  warehouse         = var.SNOWFLAKE_WAREHOUSE
+}
+```
+
+**`terraform/spcs.tf` を変更：**
+```hcl
+resource "snowflake_task" "dlt_jsonplaceholder" {
+  provider = snowflake.dlt_role  # sysadmin → dlt_role
+  ...
+}
+```
+
+---
 
 ### CI のビルドキャッシュ
 
