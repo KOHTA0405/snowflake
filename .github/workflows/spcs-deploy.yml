@@ -43,6 +43,9 @@ jobs:
           EOF
           chmod 600 ~/.snowflake/config.toml
 
+      - name: Normalize registry URL to lowercase
+        run: echo "REGISTRY=${REGISTRY,,}" >> $GITHUB_ENV
+
       - name: Configure Docker credentials store
         run: |
           mkdir -p ~/.docker
@@ -50,10 +53,6 @@ jobs:
 
       - name: Docker login to Snowflake registry
         run: snow spcs image-registry login --connection ci
-
-      - name: Debug Docker credentials
-        run: |
-          jq '.auths | to_entries[] | {registry: .key, fields: (.value | keys), authLen: (.value.auth // "" | length), tokenLen: (.value.identitytoken // "" | length)}' ~/.docker/config.json
 
       - name: Build Docker image
         run: |
