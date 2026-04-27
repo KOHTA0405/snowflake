@@ -1,0 +1,79 @@
+name: SPCS Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - spcs/**
+  workflow_dispatch:
+
+env:
+  REGISTRY: ${{ secrets.SNOWFLAKE_ORGANIZATION }}-${{ secrets.SNOWFLAKE_ACCOUNT }}.registry.snowflakecomputing.com
+  IMAGE_PATH: ${{ vars.SNOWFLAKE_IMAGE_PATH }}
+  STAGE: ${{ vars.SNOWFLAKE_STAGE }}
+  SPEC_FILE: spcs/dlt/spec.yaml
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Snowflake CLI
+        run: pip install snowflake-cli
+
+      - name: Configure Snowflake CLI
+        env:
+          SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.snowflake
+          echo "$SNOWFLAKE_PRIVATE_KEY" > /tmp/snowflake_key.pem
+          chmod 600 /tmp/snowflake_key.pem
+          cat > ~/.snowflake/config.toml << EOF
+          [connections.ci]
+          account          = "${{ secrets.SNOWFLAKE_ORGANIZATION }}-${{ secrets.SNOWFLAKE_ACCOUNT }}"
+          user             = "${{ secrets.SNOWFLAKE_USER }}"
+          authenticator    = "SNOWFLAKE_JWT"
+          private_key_path = "/tmp/snowflake_key.pem"
+          role             = "${{ secrets.SNOWFLAKE_ROLE }}"
+          database         = "${{ vars.SNOWFLAKE_DATABASE }}"
+          schema           = "${{ vars.SNOWFLAKE_SCHEMA }}"
+          EOF
+          chmod 600 ~/.snowflake/config.toml
+
+      - name: Docker login to Snowflake registry
+        run: snow spcs image-registry login --connection ci
+
+      - name: Build Docker image
+        run: |
+          docker build --platform linux/amd64 \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:latest \
+            ./spcs/dlt
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:latest
+
+      - name: Update spec.yaml image tag
+        run: sed -i "s|:latest|:${{ github.sha }}|" ${{ env.SPEC_FILE }}
+
+      - name: Upload spec.yaml to Stage
+        run: |
+          snow sql \
+            -q "PUT file://$(pwd)/${{ env.SPEC_FILE }} @${{ env.STAGE }} AUTO_COMPRESS=FALSE OVERWRITE=TRUE" \
+            --connection ci
+
+      # Job を即時実行する場合は以下のコメントを外す
+      # - name: Execute Job
+      #   run: |
+      #     snow sql \
+      #       -q "EXECUTE JOB SERVICE
+      #             IN COMPUTE POOL dlt_pool
+      #             NAME = dlt_demo.public.dlt_jsonplaceholder_job
+      #             EXTERNAL_ACCESS_INTEGRATIONS = (jsonplaceholder_integration)
+      #             FROM @dlt_demo.public.spcs_specs SPECIFICATION_FILE = 'spec.yaml';" \
+      #       --connection ci
