@@ -288,6 +288,12 @@ GRANT READ, WRITE ON IMAGE REPOSITORY dlt_demo.public.my_repo TO ROLE <CLI用ロ
 
 ### Docker・イメージ関連
 
+**CI（GitHub Actions）でのイメージ push 時にレジストリ URL は小文字でなければならない**
+- `snow spcs image-registry login` が `~/.docker/config.json` に保存する認証情報のキーは常に小文字（例: `szebenz-os44603.registry.snowflakecomputing.com`）
+- GitHub Secrets に `SNOWFLAKE_ORGANIZATION` / `SNOWFLAKE_ACCOUNT` を大文字で登録している場合、レジストリ URL が大文字になり Docker の認証情報検索でキーが一致しなくなる
+- Docker は認証情報を見つけられず Authorization ヘッダーを送らないため `UNAUTHORIZED_AUTHZ_HEADER_ABSENT` エラーが発生する
+- ワークフロー内で `echo "REGISTRY=${REGISTRY,,}" >> $GITHUB_ENV` により小文字に変換して解決できる
+
 **Apple Silicon Mac では `--platform linux/amd64` が必要**
 - 指定しないと SPCS 上で `exec format error` が発生してコンテナが起動しない
 - SPCS は `amd64` アーキテクチャのみ対応
