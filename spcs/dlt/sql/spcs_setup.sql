@@ -55,7 +55,7 @@ GRANT USAGE ON SCHEMA dlt_demo.public TO ROLE dlt_role;
 GRANT USAGE, CREATE TABLE ON SCHEMA dlt_demo.raw TO ROLE dlt_role;
 
 CREATE USER IF NOT EXISTS dlt_user
-  PASSWORD = 'UEFb4(Zf7F@N'
+  PASSWORD = 'YourStrongPasswordHere'  -- パスワードは適宜変更してください
   DEFAULT_ROLE = dlt_role
   DEFAULT_WAREHOUSE = dlt_wh;
 
