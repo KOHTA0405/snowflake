@@ -21,4 +21,14 @@ locals {
     prefix      = "prod/manifest"
     comment     = "CI GitHub Actions dbt_snowflake repo: prod-manifest read-only"
   }
+
+  # prod用Prefect managed work pool向け。IAM Userの長期アクセスキーの代わりに
+  # AWS workload identity federation(OIDC)で一時クレデンシャルを使う
+  # (cf. docs/prefect-aws-workload-identity.md)
+  dbt_artifacts_prefect_prd = {
+    role_name          = "dbt-snowflake-artifacts-prefect-prd"
+    prefect_account_id = "18525c14-7a2a-47a4-a1ed-27fe1fbcce22"
+    prefix             = "prod"
+    comment            = "prod Prefect managed flow: manifest write + node cache read/write via OIDC"
+  }
 }

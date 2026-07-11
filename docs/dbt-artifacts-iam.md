@@ -24,18 +24,18 @@ AWSのIAM best practicesと比べると、主に2点で外れている。
    専用サービスアカウント(他に同じ権限を必要とするUserが増える想定がない)
    では実務上の影響は小さい。
 
-## ベストプラクティスに即した方法(将来やるなら)
+## ベストプラクティスに即した方法
 
-- S3への実際の権限は**IAM Role**側に持たせる(現在Userに直接付けているインライン
+- S3への実際の権限は**IAM Role**側に持たせる(Userに直接付けているインライン
   ポリシーをRoleに移す)
-- そのRoleを引き受けるための最小権限(`sts:AssumeRole`のみ)を持つIAM Userを別途
-  用意し、実際のS3操作は一時的な(有効期限付きの)認証情報で行う
-- **前提条件(未確認)**: Prefectの`AwsCredentials`/`S3Bucket`ブロック(prefect-aws)が
-  role assumeのフローに対応しているかどうか。対応していなければ、flowコード内で
-  手動で`sts:AssumeRole`を呼んでboto3セッションを組み立てる実装が別途必要になり、
-  素のUser直付けよりも複雑さが増す
-- prod/devについては上記の前提条件が未確認のため、現時点でもUser直付けのまま
-  据え置いている
+- Roleを引き受ける方式は2通り考えられる
+  1. `sts:AssumeRole`のみを持つIAM Userを別途用意し、一時的な認証情報を都度取得する
+  2. OIDCフェデレーションでIAM Userを介さずに直接Roleを引き受ける(実行環境がOIDC
+     トークンを発行できる場合のみ可能)
+- prodは2の方式(OIDC)が実際に使えることが分かったため、下記の通り移行済み
+- devはローカル実行のためOIDCトークンを発行できず、1の方式も「最初に持つ、
+  長期間有効な認証情報」がどこかに必要になる点でUser直付けと大差ないため、
+  User直付けのまま据え置いている
 
 ## CI用IAMは実装済み(Role方式)
 
@@ -46,10 +46,23 @@ IAM User無しでRoleだけで完結できる。既存の`terraform-pr.yml`が�
 (長期アクセスキー無し)。詳細は
 [dbt-artifacts-s3-bucket.md](./dbt-artifacts-s3-bucket.md)の「CI用IAM(実装済み)」を参照。
 
-## 現状のまま進めた理由
+## prod用はRole方式への移行を実装済み(Prefect Cloud側の切り替えは未実施)
+
+Prefect Managed work poolにAWS workload identity federationの機能があり、flow
+コード側の変更無しにPrefect Cloudが自動的にSTSの`AssumeRoleWithWebIdentity`を
+呼んで一時クレデンシャルを注入できることが分かった。Terraform側(`terraform/aws/`)
+はCI用Roleと同型の構成(OIDCプロバイダー + IAM Role)をprod用に実装・apply済み。
+詳細は[prefect-aws-workload-identity.md](./prefect-aws-workload-identity.md)を参照。
+
+Prefect Cloud側の設定切り替え・動作確認が済むまでは、旧IAM User
+(`dbt-snowflake-artifacts-prod`)を並行稼働のため残している。動作確認後に
+削除する予定(同docsの「移行完了後」の項を参照)。
+
+dev用はローカル実行が前提でworkload identity federationの対象外
+(Prefect Managed work poolの機能のため)。以下は据え置いた理由。
 
 Prefect CloudのmanagedexecutionはAWSネイティブなコンピュート環境ではなく、
 instance profileやexecution roleのような自動的なRole紐付けの仕組みが無い。
 そのため「最初に持つ、長期間有効な認証情報」がどこかに必要になり、
-今回はUser直付けを選択した。リスクはprefixごとの最小権限スコープ
-(`prod/*`だけ、`dev/*`だけ)で抑えている。
+dev用は今回もUser直付けを選択した。リスクはprefixごとの最小権限スコープ
+(`dev/*`だけ)で抑えている。

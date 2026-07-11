@@ -116,3 +116,51 @@ resource "aws_iam_role_policy" "dbt_artifacts_ci" {
   role   = aws_iam_role.dbt_artifacts_ci.name
   policy = data.aws_iam_policy_document.dbt_artifacts_ci_access.json
 }
+
+# ============================================================
+# Prefect Cloud managed work pool(prod)用
+# AWS workload identity federationでIAM Userの長期アクセスキーを
+# 廃止し、一時クレデンシャルに切り替える (cf. docs/prefect-aws-workload-identity.md)
+# 旧IAM User(dbt-snowflake-artifacts-prod)は動作確認が取れるまで並行稼働のため残す
+# ============================================================
+
+resource "aws_iam_openid_connect_provider" "prefect_cloud" {
+  url            = "https://api.prefect.cloud/oidc-provider"
+  client_id_list = ["prefect-cloud"]
+}
+
+data "aws_iam_policy_document" "dbt_artifacts_prefect_prd_trust" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.prefect_cloud.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "api.prefect.cloud/oidc-provider:aud"
+      values   = ["prefect-cloud"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "api.prefect.cloud/oidc-provider:sub"
+      values   = ["prefect:account:${local.dbt_artifacts_prefect_prd.prefect_account_id}"]
+    }
+  }
+}
+
+resource "aws_iam_role" "dbt_artifacts_prefect_prd" {
+  name               = local.dbt_artifacts_prefect_prd.role_name
+  assume_role_policy = data.aws_iam_policy_document.dbt_artifacts_prefect_prd_trust.json
+  tags               = merge(local.dbt_artifacts.tags, { Comment = local.dbt_artifacts_prefect_prd.comment })
+}
+
+resource "aws_iam_role_policy" "dbt_artifacts_prefect_prd" {
+  name   = "${local.dbt_artifacts_prefect_prd.role_name}-s3-access"
+  role   = aws_iam_role.dbt_artifacts_prefect_prd.name
+  policy = data.aws_iam_policy_document.dbt_artifacts_access["prod"].json
+}
