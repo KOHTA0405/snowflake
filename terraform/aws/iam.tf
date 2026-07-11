@@ -121,7 +121,8 @@ resource "aws_iam_role_policy" "dbt_artifacts_ci" {
 # Prefect Cloud managed work pool(prod)用
 # AWS workload identity federationでIAM Userの長期アクセスキーを
 # 廃止し、一時クレデンシャルに切り替える (cf. docs/prefect-aws-workload-identity.md)
-# 旧IAM User(dbt-snowflake-artifacts-prod)は動作確認が取れるまで並行稼働のため残す
+# 動作確認済みのため旧IAM User(dbt-snowflake-artifacts-prod)は
+# dbt_artifacts_iamのlocalsから削除済み(下のprod用ブロックがそれに代わる)
 # ============================================================
 
 resource "aws_iam_openid_connect_provider" "prefect_cloud" {
@@ -159,8 +160,35 @@ resource "aws_iam_role" "dbt_artifacts_prefect_prd" {
   tags               = merge(local.dbt_artifacts.tags, { Comment = local.dbt_artifacts_prefect_prd.comment })
 }
 
+# dbt_artifacts_iamの"prod"エントリ廃止に伴い、専用のポリシードキュメントとして定義
+# (内容は旧dbt_artifacts_access["prod"]と同一: prod/*へのList/Get/Put)
+data "aws_iam_policy_document" "dbt_artifacts_prefect_prd_access" {
+  statement {
+    sid       = "ListBucketPrefix"
+    effect    = "Allow"
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.dbt_artifacts.arn]
+
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["${local.dbt_artifacts_prefect_prd.prefix}/*"]
+    }
+  }
+
+  statement {
+    sid     = "ReadWriteObjects"
+    effect  = "Allow"
+    actions = ["s3:GetObject", "s3:PutObject"]
+    # prefix配下の全オブジェクトが対象のため末尾ワイルドカードは構造上必須。
+    # bucket/actionはprod/*・s3:GetObject/PutObjectのみに限定済み。
+    #tfsec:ignore:aws-iam-no-policy-wildcards
+    resources = ["${aws_s3_bucket.dbt_artifacts.arn}/${local.dbt_artifacts_prefect_prd.prefix}/*"]
+  }
+}
+
 resource "aws_iam_role_policy" "dbt_artifacts_prefect_prd" {
   name   = "${local.dbt_artifacts_prefect_prd.role_name}-s3-access"
   role   = aws_iam_role.dbt_artifacts_prefect_prd.name
-  policy = data.aws_iam_policy_document.dbt_artifacts_access["prod"].json
+  policy = data.aws_iam_policy_document.dbt_artifacts_prefect_prd_access.json
 }

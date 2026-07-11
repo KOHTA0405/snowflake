@@ -2,7 +2,7 @@
 
 [dbt-artifacts-iam.md](./dbt-artifacts-iam.md)で「ベストプラクティスから外れている点」として指摘した、prod用IAM Userの長期アクセスキーを廃止するための変更メモ。
 
-**Terraform側(`terraform/aws/`)は実装・apply済み**。Prefect Cloud側の設定・動作確認はまだ(下記「Prefect Cloud側で必要な作業」を参照)。旧IAM User(`dbt-snowflake-artifacts-prod`)は動作確認が取れるまで並行稼働のため残している。
+**実装・動作確認・完了**。Terraform(`terraform/aws/`)・Prefect Cloud側(`dbt_snowflake`リポジトリの`prefect.yaml`・`aws-credentials-prd` Block)ともに変更済みで、prd targetのflow runを2回(旧IAM User削除の前後で1回ずつ)実行して正常完了を確認した。旧IAM User(`dbt-snowflake-artifacts-prod`)・アクセスキー・インラインポリシーは`locals-iam.tf`の`dbt_artifacts_iam`から`prod`エントリを削除し、`terraform apply`で削除済み。`aws_iam_role_policy.dbt_artifacts_prefect_prd`は旧`dbt_artifacts_access["prod"]`ではなく専用の`dbt_artifacts_prefect_prd_access`ポリシードキュメントを参照するよう分離した(削除したlocalsへの依存を切るため)。
 
 ## 前提が変わった点
 
@@ -117,19 +117,26 @@ apply済み。Role ARN: `arn:aws:iam::730335183162:role/dbt-snowflake-artifacts-
 
 なお`aws_iam_role`の`tags`はAWSタグ値の文字種制約(`()`, `,`, `*`などは不可)に引っかかりやすい(CI用Roleと同様、今回も`comment`に`(OIDC)`と書いて初回applyでエラーになったため`via OIDC`に修正した)。
 
-### 5. 移行完了後: 旧IAM User/アクセスキーを削除(未実施)
+### 5. 移行完了後: 旧IAM User/アクセスキーを削除(実施済み)
 
-動作確認が取れたら、`locals-iam.tf`の`dbt_artifacts_iam`マップから`prod`エントリを削除する(`dev`は残す)。これにより`aws_iam_user.dbt_artifacts["prod"]`・`aws_iam_access_key.dbt_artifacts["prod"]`・対応するインラインポリシーが`for_each`から外れ、`terraform apply`で削除される。
+`locals-iam.tf`の`dbt_artifacts_iam`マップから`prod`エントリを削除(`dev`は残置)。これにより`aws_iam_user.dbt_artifacts["prod"]`・`aws_iam_access_key.dbt_artifacts["prod"]`・対応するインラインポリシーが`for_each`から外れ、`terraform apply`で削除された(`Plan: 0 to add, 0 to change, 3 to destroy`)。
 
-## Prefect Cloud側で必要な作業(このリポジトリの管轄外・参考まで)
+これに伴い、`aws_iam_role_policy.dbt_artifacts_prefect_prd`が参照していた`data.aws_iam_policy_document.dbt_artifacts_access["prod"]`(削除される`dbt_artifacts_iam["prod"]`に依存)を、独立した`data.aws_iam_policy_document.dbt_artifacts_prefect_prd_access`に切り出した。内容(prod/*へのList/Get/Put)は変更なし。
 
-1. Prefect CloudのアカウントID確認(UIまたは`prefect cloud workspace ls`)→ 上記`prefect_account_id`に設定
-2. `default-work-pool`の設定画面で「Federated Identity」にRoleのARN + リージョンを入力
-3. `aws-credentials-prd` Secret Blockを空認証情報で再保存(またはブロックごと削除して環境変数フォールバックに委ねる)
-4. `prefect deployment run 'dbt-build/dbt-build'`で動作確認
+## Prefect Cloud側で実施した作業
+
+このリポジトリの管轄外(`dbt_snowflake`リポジトリ側)だが、実施内容を記録しておく。
+
+1. Prefect CloudのアカウントID確認 → `prefect_account_id`に設定(実施済み)
+2. `prefect.yaml`の`job_variables`に`federated_identity`(Role ARN + `ap-northeast-1`)を追加し、`prefect deploy`で反映(Work Poolの設定画面ではなく、デプロイ単位でjob_variablesとして指定する方式を採用)
+3. `aws-credentials-prd` Secret Blockのアクセスキーを空にして再保存(boto3の環境変数フォールバックに委ねる)。`s3-bucket-prd`/`s3-bucket-prd-cache` Blockは`aws-credentials-prd`をBlock参照(値のコピーではない)で持っているため、この1箇所の更新だけで両方に反映される
+4. `prefect deployment run 'dbt-build/dbt-build'`で動作確認(旧IAM User削除の前後で2回実行、いずれも`Completed`)
 
 詳細は[dbt_snowflakeリポジトリ]側のPrefect関連docsを参照。
 
-## ロールバック方針
+## ロールバック方針(実施済みの記録)
 
-新Roleの動作確認が取れるまでは、旧IAM User(`dbt-snowflake-artifacts-prod`)とアクセスキーは削除せず並行稼働させる。Prefect Cloud側のBlock設定を新方式に切り替えて問題が出た場合、`aws-credentials-prd` Blockを元の値に戻すだけで即座に旧方式へ戻せる状態を維持する。
+新Role切り替え後、旧IAM Userは動作確認が取れるまで並行稼働させた上で削除する方針で進めた。実際には切り替え後の1回目の動作確認が成功した時点で旧IAM Userを削除している。もし今後同様の切り替えが必要になった場合、旧方式へ戻すには以下が必要(現在は旧IAM Userを削除済みのため、戻すには再作成が必要):
+
+- Terraform側: `locals-iam.tf`の`dbt_artifacts_iam`に`prod`エントリを戻して`terraform apply`(IAM User・アクセスキーを再作成)
+- Prefect Cloud側: `aws-credentials-prd` Blockに再発行したアクセスキーを設定し直す
