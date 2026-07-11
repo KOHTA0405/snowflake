@@ -59,21 +59,22 @@ dev/cache/...                   # 同上(dev、優先度は低)
 
 ## 実装状況
 
-`terraform/`はSnowflakeとAWSでディレクトリ(state)を分離した。バケット本体(暗号化・バージョニング・パブリックブロック・`*/cache/*`のライフサイクルルール・タグ)は`terraform/aws/`に実装済み(未apply)。
+`terraform/`はSnowflakeとAWSでディレクトリ(state)を分離した。バケット本体(暗号化・バージョニング・パブリックブロック・`*/cache/*`のライフサイクルルール・タグ)は`terraform/aws/`に実装・apply済み。
 
 ```
 terraform/
 ├── snowflake/   # 既存のSnowflakeリソース一式(backend key: snowflake/tfstate)
-└── aws/         # dbt成果物用S3バケットなど(backend key: aws/tfstate)
+└── aws/         # dbt成果物用S3バケット・IAMなど(backend key: aws/tfstate)
 ```
 
 AWSプロバイダの認証情報はデフォルトのAWS認証情報チェーンに委ねる方針とし、リージョンは`ap-northeast-1`で確定した。
 
 `terraform/aws/`はCI(`.github/workflows/terraform-pr.yml`)の対象外とし、applyはローカルから手動で実行する運用とした(トリガーの`paths`は`terraform/snowflake/**`のみに限定)。
 
+IAMはprod/dev用にそれぞれ専用のIAM User(`dbt-snowflake-artifacts-prod` / `dbt-snowflake-artifacts-dev`)を作成し、対応するprefix(`prod/*` / `dev/*`)のみへの`s3:ListBucket`(prefix条件付き)・`s3:GetObject`・`s3:PutObject`を許可するインラインポリシーを直接アタッチしている(専用サービスアカウントのためグループ経由にはしていない)。アクセスキーは`terraform output`(sensitive)から取得し、Prefect Secret Blockへ手動登録する想定。
+
 ## 未決定事項(実装時に詰める)
 
-- IAM(用途ごとのprefix権限分離。本番Prefect flow/dev/CI)のTerraform実装
+- CI用IAM(GitHub Actionsから`prod/manifest/*`をGet専用で読む用途)は後回し。対象リポジトリ(dbt_snowflake)側のOIDC対応状況を確認してから着手する
 - ノードキャッシュ(`CacheConfig`)を実際に有効化するかどうか、有効化する場合の`retries`等のパラメータ設計は[dbt_snowflake側のSlim CI設計メモ](https://github.com/KOHTA0405/dbt_snowflake/blob/main/docs/ci-cd-slim-ci-plan.md)を参照
-- CI用IAM認証情報(GitHub Actionsからの読み取り用、`prod/manifest/*`のGet専用)の受け渡し方法(GitHub Secrets等)
 - ライフサイクルルールの30日は「オブジェクト作成/更新からの経過日数」で判定される(S3標準機能には「最終アクセスからの日数」による削除は無いため、ドキュメント冒頭の「アクセスが無いオブジェクト」は近似)
