@@ -6,3 +6,7 @@ exclude:
   # dbt artifacts bucket: 内部CI用の一時キャッシュ/state用途で、パブリックアクセスは
   # 完全ブロック済みのためアクセスログは今回スコープ外。
   - aws-s3-enable-bucket-logging
+  # dbt artifacts IAM: prod/dev用の1ユーザー1用途の専用サービスアカウントで、
+  # それぞれ専用のprefix限定ポリシーを直接アタッチしている。グループ経由にする
+  # メリットが薄いため直接アタッチのまま許容する。
+  - aws-iam-no-user-attached-policies
