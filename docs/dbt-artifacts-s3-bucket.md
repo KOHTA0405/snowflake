@@ -73,6 +73,8 @@ AWSプロバイダの認証情報はデフォルトのAWS認証情報チェー�
 
 IAMはprod/dev用にそれぞれ専用のIAM User(`dbt-snowflake-artifacts-prod` / `dbt-snowflake-artifacts-dev`)を作成し、対応するprefix(`prod/*` / `dev/*`)のみへの`s3:ListBucket`(prefix条件付き)・`s3:GetObject`・`s3:PutObject`を許可するインラインポリシーを直接アタッチしている(専用サービスアカウントのためグループ経由にはしていない)。アクセスキーは`terraform output`(sensitive)から取得し、Prefect Secret Blockへ手動登録する想定。
 
+prod用は[prefect-aws-workload-identity.md](./prefect-aws-workload-identity.md)の通りOIDC(workload identity federation)によるIAM Role方式(`dbt-snowflake-artifacts-prefect-prd`)への移行をTerraform側は実装・apply済み。Prefect Cloud側の切り替え・動作確認が済むまでは、旧IAM User(`dbt-snowflake-artifacts-prod`)を並行稼働のため残している。dev用はローカル実行前提のためUser方式のまま。
+
 ## CI用IAM(実装済み)
 
 認証方式はGitHub Actions OIDC + IAM Role(ドキュメント旧版でいうB案)を採用した。長期的な

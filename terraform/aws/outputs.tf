@@ -30,3 +30,8 @@ output "dbt_artifacts_ci_role_arn" {
   description = "IAM role ARN for CI (GitHub Actions, dbt_snowflake repo) to assume via OIDC for prod/manifest/* read access"
   value       = aws_iam_role.dbt_artifacts_ci.arn
 }
+
+output "dbt_artifacts_prefect_prd_role_arn" {
+  description = "IAM role ARN for Prefect Cloud managed work pool (prod) to assume via OIDC workload identity federation"
+  value       = aws_iam_role.dbt_artifacts_prefect_prd.arn
+}
