@@ -25,3 +25,8 @@ output "dbt_artifacts_iam_secret_access_keys" {
   value       = { for k, v in aws_iam_access_key.dbt_artifacts : k => v.secret }
   sensitive   = true
 }
+
+output "dbt_artifacts_ci_role_arn" {
+  description = "IAM role ARN for CI (GitHub Actions, dbt_snowflake repo) to assume via OIDC for prod/manifest/* read access"
+  value       = aws_iam_role.dbt_artifacts_ci.arn
+}
