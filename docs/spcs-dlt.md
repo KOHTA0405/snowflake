@@ -432,7 +432,7 @@ schema   = "PUBLIC"
 
 現状は `sysadmin` プロバイダーで Task を作成しており、SYSADMIN に対して個別に権限を付与している。`dlt_role` は `dlt_demo` のすべてのオブジェクトを管理しているため、`dlt_role` プロバイダーで Task を作成すれば追加の権限付与が不要になる。
 
-**`terraform/provider.tf` に追加：**
+**`terraform/snowflake/provider.tf` に追加：**
 ```hcl
 provider "snowflake" {
   alias             = "dlt_role"
@@ -446,7 +446,7 @@ provider "snowflake" {
 }
 ```
 
-**`terraform/spcs.tf` を変更：**
+**`terraform/snowflake/spcs.tf` を変更：**
 ```hcl
 resource "snowflake_task" "dlt_jsonplaceholder" {
   provider = snowflake.dlt_role  # sysadmin → dlt_role

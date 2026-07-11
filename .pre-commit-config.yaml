@@ -4,8 +4,8 @@ repos:
     hooks:
       - id: terraform_fmt
       - id: terraform_validate
-        exclude: ^terraform/modules/
+        exclude: ^terraform/snowflake/modules/
       - id: terraform_tflint
       - id: terraform_tfsec
         args:
-          - --args=--config-file=./.tfsec.yml
+          - --args=--config-file=__GIT_WORKING_DIR__.tfsec.yml
