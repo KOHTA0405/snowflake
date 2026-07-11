@@ -19,13 +19,13 @@ dbt_snowflakeのPrefect flow(`flows/dbt_build_flow.py`)は`PrefectDbtOrchestrato
 
 ### 基本設定
 
-| 項目 | 値 |
-| --- | --- |
-| バケット名 | `kohta0405-dbt-snowflake-artifacts`(S3バケット名はグローバル一意のため、GitHubユーザー名を接頭辞にして衝突を回避) |
-| リージョン | 未決定。特にこだわりがなければ`ap-northeast-1`を提案 |
+| 項目               | 値                                                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| バケット名         | `kohta-dbt-snowflake-artifacts`(S3バケット名はグローバル一意のため、GitHubユーザー名を接頭辞にして衝突を回避)             |
+| リージョン         | 未決定。特にこだわりがなければ`ap-northeast-1`を提案                                                                      |
 | パブリックアクセス | 完全ブロック(`block_public_acls` / `block_public_policy` / `ignore_public_acls` / `restrict_public_buckets` すべて`true`) |
-| デフォルト暗号化 | 有効化(SSE-S3 = `AES256`で十分、KMS必須の要件は今のところ無し) |
-| バージョニング | 有効化。`latest`パスへの上書きが基本運用のため、誤って壊れたファイルで上書きした場合の復旧用セーフティネットとして |
+| デフォルト暗号化   | 有効化(SSE-S3 = `AES256`で十分、KMS必須の要件は今のところ無し)                                                            |
+| バージョニング     | 有効化。`latest`パスへの上書きが基本運用のため、誤って壊れたファイルで上書きした場合の復旧用セーフティネットとして        |
 
 ### オブジェクトのキー構造
 
@@ -44,10 +44,10 @@ dev/cache/...                   # 同上(dev、優先度は低)
 
 ### IAM(最小権限、用途ごとに分離)
 
-| 主体 | 権限範囲(prefix) | 操作 |
-| --- | --- | --- |
-| 本番Prefect flow | `prod/*` | Get/Put(manifest書き込み・キャッシュ読み書き) |
-| ローカル/dev実行 | `dev/*` | Get/Put(キャッシュ読み書きのみ、任意) |
+| 主体               | 権限範囲(prefix)  | 操作                                             |
+| ------------------ | ----------------- | ------------------------------------------------ |
+| 本番Prefect flow   | `prod/*`          | Get/Put(manifest書き込み・キャッシュ読み書き)    |
+| ローカル/dev実行   | `dev/*`           | Get/Put(キャッシュ読み書きのみ、任意)            |
 | CI(GitHub Actions) | `prod/manifest/*` | Get専用(state取得のみ、書き込み権限は持たせない) |
 
 ### タグ
@@ -57,9 +57,23 @@ dev/cache/...                   # 同上(dev、優先度は低)
 
 ---
 
+## 実装状況
+
+`terraform/`はSnowflakeとAWSでディレクトリ(state)を分離した。バケット本体(暗号化・バージョニング・パブリックブロック・`*/cache/*`のライフサイクルルール・タグ)は`terraform/aws/`に実装済み(未apply)。
+
+```
+terraform/
+├── snowflake/   # 既存のSnowflakeリソース一式(backend key: snowflake/tfstate)
+└── aws/         # dbt成果物用S3バケットなど(backend key: aws/tfstate)
+```
+
+AWSプロバイダの認証情報はデフォルトのAWS認証情報チェーンに委ねる方針とし、リージョンは`ap-northeast-1`で確定した。
+
+`terraform/aws/`はCI(`.github/workflows/terraform-pr.yml`)の対象外とし、applyはローカルから手動で実行する運用とした(トリガーの`paths`は`terraform/snowflake/**`のみに限定)。
+
 ## 未決定事項(実装時に詰める)
 
-- このリポジトリの`terraform/`は現状Snowflakeプロバイダのみで構成されているため、AWSプロバイダの追加設定(認証情報の管理方法含む)が別途必要
-- バケットのリージョン
+- IAM(用途ごとのprefix権限分離。本番Prefect flow/dev/CI)のTerraform実装
 - ノードキャッシュ(`CacheConfig`)を実際に有効化するかどうか、有効化する場合の`retries`等のパラメータ設計は[dbt_snowflake側のSlim CI設計メモ](https://github.com/KOHTA0405/dbt_snowflake/blob/main/docs/ci-cd-slim-ci-plan.md)を参照
-- CI用IAM認証情報(GitHub Actionsからの読み取り用)の受け渡し方法(GitHub Secrets等)
+- CI用IAM認証情報(GitHub Actionsからの読み取り用、`prod/manifest/*`のGet専用)の受け渡し方法(GitHub Secrets等)
+- ライフサイクルルールの30日は「オブジェクト作成/更新からの経過日数」で判定される(S3標準機能には「最終アクセスからの日数」による削除は無いため、ドキュメント冒頭の「アクセスが無いオブジェクト」は近似)

@@ -1,2 +1,8 @@
 severity_overrides: {}
-exclude: []
+exclude:
+  # dbt artifacts bucket: SSE-S3(AES256)で十分と判断(KMS必須要件なし)。
+  # cf. docs/dbt-artifacts-s3-bucket.md
+  - aws-s3-encryption-customer-key
+  # dbt artifacts bucket: 内部CI用の一時キャッシュ/state用途で、パブリックアクセスは
+  # 完全ブロック済みのためアクセスログは今回スコープ外。
+  - aws-s3-enable-bucket-logging
