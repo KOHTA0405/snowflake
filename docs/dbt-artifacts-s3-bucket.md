@@ -73,8 +73,25 @@ AWSプロバイダの認証情報はデフォルトのAWS認証情報チェー�
 
 IAMはprod/dev用にそれぞれ専用のIAM User(`dbt-snowflake-artifacts-prod` / `dbt-snowflake-artifacts-dev`)を作成し、対応するprefix(`prod/*` / `dev/*`)のみへの`s3:ListBucket`(prefix条件付き)・`s3:GetObject`・`s3:PutObject`を許可するインラインポリシーを直接アタッチしている(専用サービスアカウントのためグループ経由にはしていない)。アクセスキーは`terraform output`(sensitive)から取得し、Prefect Secret Blockへ手動登録する想定。
 
+## CI用IAM(実装済み)
+
+認証方式はGitHub Actions OIDC + IAM Role(ドキュメント旧版でいうB案)を採用した。長期的な
+静的アクセスキーをGitHub Secretsに置かないため、prod/devのUser方式より安全。
+
+- **Role**: `dbt-snowflake-artifacts-ci`(`terraform/aws/iam.tf`)
+- **trust policy**: GitHub ActionsのOIDC(`token.actions.githubusercontent.com`。このAWS
+  アカウントには`terraform-pr.yml`が使うOIDC IDプロバイダーが既に存在するため`data`で参照し、
+  新規作成はしていない)経由で、`repo:KOHTA0405/dbt_snowflake:*`(リポジトリ単位、ブランチ/
+  イベント不問)からのみAssumeRoleWithWebIdentityを許可
+- **権限範囲**: `prod/manifest/*`のみ、`s3:GetObject` + prefix条件付き`s3:ListBucket`。
+  書き込み権限は一切持たせない(state取得専用)
+- Role ARN: `terraform output dbt_artifacts_ci_role_arn`で取得し、`dbt_snowflake`リポジトリの
+  ワークフローで`aws-actions/configure-aws-credentials`の`role-to-assume`に設定する
+
+なお`aws_iam_role`の`tags`はAWSタグ値の文字種制約(`()`, `,`, `*`などは不可)に引っかかりやすい
+ので注意(初回applyで実際にエラーになった)。
+
 ## 未決定事項(実装時に詰める)
 
-- CI用IAM(GitHub Actionsから`prod/manifest/*`をGet専用で読む用途)は後回し。対象リポジトリ(dbt_snowflake)側のOIDC対応状況を確認してから着手する
 - ノードキャッシュ(`CacheConfig`)を実際に有効化するかどうか、有効化する場合の`retries`等のパラメータ設計は[dbt_snowflake側のSlim CI設計メモ](https://github.com/KOHTA0405/dbt_snowflake/blob/main/docs/ci-cd-slim-ci-plan.md)を参照
 - ライフサイクルルールの30日は「オブジェクト作成/更新からの経過日数」で判定される(S3標準機能には「最終アクセスからの日数」による削除は無いため、ドキュメント冒頭の「アクセスが無いオブジェクト」は近似)

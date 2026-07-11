@@ -34,11 +34,17 @@ AWSのIAM best practicesと比べると、主に2点で外れている。
   role assumeのフローに対応しているかどうか。対応していなければ、flowコード内で
   手動で`sts:AssumeRole`を呼んでboto3セッションを組み立てる実装が別途必要になり、
   素のUser直付けよりも複雑さが増す
-- CI(GitHub Actions)側については事情が異なり、OIDCフェデレーションが使えるため
-  IAM User無しでRoleだけで完結できる。既存の`terraform-pr.yml`が使っている
-  `AWS_IAM_ROLE_ARN`はまさにこのパターンなので、CI用IAM(未実装、
-  cf. [dbt-artifacts-s3-bucket.md](./dbt-artifacts-s3-bucket.md)の未決定事項)は
-  最初からRoleのみで設計するのが妥当。
+- prod/devについては上記の前提条件が未確認のため、現時点でもUser直付けのまま
+  据え置いている
+
+## CI用IAMは実装済み(Role方式)
+
+CI(GitHub Actions)側は事情が異なり、OIDCフェデレーションが使えるため
+IAM User無しでRoleだけで完結できる。既存の`terraform-pr.yml`が使っている
+`AWS_IAM_ROLE_ARN`はまさにこのパターンで、今回追加した
+`dbt-snowflake-artifacts-ci`(`terraform/aws/iam.tf`)も同様にRoleのみで実装した
+(長期アクセスキー無し)。詳細は
+[dbt-artifacts-s3-bucket.md](./dbt-artifacts-s3-bucket.md)の「CI用IAM(実装済み)」を参照。
 
 ## 現状のまま進めた理由
 
