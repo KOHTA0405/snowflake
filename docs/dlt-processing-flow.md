@@ -134,6 +134,24 @@ def get_posts():
 
 dlt 公式ドキュメントの表現を借りると、この系では「dlt bypasses many processing steps normally involved in passing JSON objects through the pipeline」——JSON オブジェクトを1件ずつ処理する工程そのものを迂回する。
 
+### 「型推論スキップ」の意味：型を決めているのは pandas/pyarrow 側
+
+上表の「型推論スキップ」は、dlt が値を見て型を当てる作業をしないという意味であり、型推論そのものが消えるわけではない。**型を決める主体が dlt から pandas/pyarrow 側に移る**だけで、DataFrame/Arrow テーブルを作った時点で確定している型が、そのまま Snowflake の列型に変換されて（「dlt automatically translates the Arrow table's schema to the destination table's schema」）ロードされる。
+
+つまり：
+
+- 明示的に `.astype()` や `pa.schema(...)` で型を指定していれば、その型がそのまま宛先の列型になる
+- 指定していなければ、`pd.DataFrame(response.json())` のように辞書のリストから作った時点で **pandas が自分の流儀で型推論した結果** が、そのまま宛先の列型になる
+
+**具体例（pandas の落とし穴）**：整数列に欠損値（`NaN`）が1つでも混じっていると、pandas は列を自動的に `float64` に昇格させることがある。
+
+```python
+df = pd.DataFrame([{"id": 1}, {"id": 2}, {"id": None}])
+df.dtypes  # id: float64 （int64 ではない）
+```
+
+一般系（dict/yield ベース）なら dlt が行ごとに型を見て「整数として扱える nullable 列」と柔軟に判定できるが、DataFrame ベースではこの `float64` という pandas の判定がそのまま Snowflake 側の列型（例：`FLOAT`）に反映されてしまう。本来 `NUMBER` にしたかった列が `FLOAT` になる、といった意図しない型が乗るケースがあるため、型を厳密にコントロールしたい場合は取得元（pandas/pyarrow）側で事前にキャストしておく必要がある。
+
 ### 管理カラム（`_dlt_id` / `_dlt_load_id`）の扱いの違い
 
 Arrow/DataFrame 系では、公式ドキュメントに「dlt does not add any data lineage columns by default when loading Arrow tables」と明記されている通り、**デフォルトでは `_dlt_id`/`_dlt_load_id` は付与されない**。これは単なる実装上の違いではなく、挙動そのものの違いである。
