@@ -15,7 +15,7 @@ data "aws_iam_policy_document" "dbt_artifacts_access" {
     condition {
       test     = "StringLike"
       variable = "s3:prefix"
-      values   = ["${each.value.prefix}/*"]
+      values   = [each.value.prefix == "" ? "*" : "${each.value.prefix}/*"]
     }
   }
 
@@ -23,7 +23,7 @@ data "aws_iam_policy_document" "dbt_artifacts_access" {
     sid       = "ReadWriteObjects"
     effect    = "Allow"
     actions   = ["s3:GetObject", "s3:PutObject"]
-    resources = ["${aws_s3_bucket.dbt_artifacts.arn}/${each.value.prefix}/*"]
+    resources = [each.value.prefix == "" ? "${aws_s3_bucket.dbt_artifacts.arn}/*" : "${aws_s3_bucket.dbt_artifacts.arn}/${each.value.prefix}/*"]
   }
 }
 
@@ -57,6 +57,8 @@ data "aws_iam_openid_connect_provider" "github_actions" {
 }
 
 data "aws_iam_policy_document" "dbt_artifacts_ci_trust" {
+  for_each = local.dbt_artifacts_ci
+
   statement {
     effect  = "Allow"
     actions = ["sts:AssumeRoleWithWebIdentity"]
@@ -75,18 +77,21 @@ data "aws_iam_policy_document" "dbt_artifacts_ci_trust" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${local.dbt_artifacts_ci.github_repo}:*"]
+      values   = ["repo:${each.value.github_repo}:*"]
     }
   }
 }
 
 resource "aws_iam_role" "dbt_artifacts_ci" {
-  name               = local.dbt_artifacts_ci.role_name
-  assume_role_policy = data.aws_iam_policy_document.dbt_artifacts_ci_trust.json
-  tags               = merge(local.dbt_artifacts.tags, { Comment = local.dbt_artifacts_ci.comment })
+  for_each           = local.dbt_artifacts_ci
+  name               = each.value.role_name
+  assume_role_policy = data.aws_iam_policy_document.dbt_artifacts_ci_trust[each.key].json
+  tags               = merge(local.dbt_artifacts.tags, { Comment = each.value.comment })
 }
 
 data "aws_iam_policy_document" "dbt_artifacts_ci_access" {
+  for_each = local.dbt_artifacts_ci
+
   statement {
     sid       = "ListBucketManifestPrefix"
     effect    = "Allow"
@@ -96,7 +101,7 @@ data "aws_iam_policy_document" "dbt_artifacts_ci_access" {
     condition {
       test     = "StringLike"
       variable = "s3:prefix"
-      values   = ["${local.dbt_artifacts_ci.prefix}/*"]
+      values   = ["${each.value.prefix}/*"]
     }
   }
 
@@ -105,16 +110,17 @@ data "aws_iam_policy_document" "dbt_artifacts_ci_access" {
     effect  = "Allow"
     actions = ["s3:GetObject"]
     # prefix配下の全オブジェクトが対象のため末尾ワイルドカードは構造上必須。
-    # bucket/actionはprod/manifest/*・s3:GetObjectのみに限定済み。
+    # bucket/actionはmanifest/*・s3:GetObjectのみに限定済み。
     #tfsec:ignore:aws-iam-no-policy-wildcards
-    resources = ["${aws_s3_bucket.dbt_artifacts.arn}/${local.dbt_artifacts_ci.prefix}/*"]
+    resources = ["${aws_s3_bucket.dbt_artifacts.arn}/${each.value.prefix}/*"]
   }
 }
 
 resource "aws_iam_role_policy" "dbt_artifacts_ci" {
-  name   = "${local.dbt_artifacts_ci.role_name}-s3-read"
-  role   = aws_iam_role.dbt_artifacts_ci.name
-  policy = data.aws_iam_policy_document.dbt_artifacts_ci_access.json
+  for_each = local.dbt_artifacts_ci
+  name     = "${each.value.role_name}-s3-read"
+  role     = aws_iam_role.dbt_artifacts_ci[each.key].name
+  policy   = data.aws_iam_policy_document.dbt_artifacts_ci_access[each.key].json
 }
 
 # ============================================================
@@ -126,18 +132,21 @@ resource "aws_iam_role_policy" "dbt_artifacts_ci" {
 # ============================================================
 
 resource "aws_iam_openid_connect_provider" "prefect_cloud" {
+  for_each       = local.dbt_artifacts_prefect
   url            = "https://api.prefect.cloud/oidc-provider"
   client_id_list = ["prefect-cloud"]
 }
 
 data "aws_iam_policy_document" "dbt_artifacts_prefect_prd_trust" {
+  for_each = local.dbt_artifacts_prefect
+
   statement {
     effect  = "Allow"
     actions = ["sts:AssumeRoleWithWebIdentity"]
 
     principals {
       type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.prefect_cloud.arn]
+      identifiers = [aws_iam_openid_connect_provider.prefect_cloud[each.key].arn]
     }
 
     condition {
@@ -149,20 +158,23 @@ data "aws_iam_policy_document" "dbt_artifacts_prefect_prd_trust" {
     condition {
       test     = "StringEquals"
       variable = "api.prefect.cloud/oidc-provider:sub"
-      values   = ["prefect:account:${local.dbt_artifacts_prefect_prd.prefect_account_id}"]
+      values   = ["prefect:account:${each.value.prefect_account_id}"]
     }
   }
 }
 
 resource "aws_iam_role" "dbt_artifacts_prefect_prd" {
-  name               = local.dbt_artifacts_prefect_prd.role_name
-  assume_role_policy = data.aws_iam_policy_document.dbt_artifacts_prefect_prd_trust.json
-  tags               = merge(local.dbt_artifacts.tags, { Comment = local.dbt_artifacts_prefect_prd.comment })
+  for_each           = local.dbt_artifacts_prefect
+  name               = each.value.role_name
+  assume_role_policy = data.aws_iam_policy_document.dbt_artifacts_prefect_prd_trust[each.key].json
+  tags               = merge(local.dbt_artifacts.tags, { Comment = each.value.comment })
 }
 
 # dbt_artifacts_iamの"prod"エントリ廃止に伴い、専用のポリシードキュメントとして定義
 # (内容は旧dbt_artifacts_access["prod"]と同一: prod/*へのList/Get/Put)
 data "aws_iam_policy_document" "dbt_artifacts_prefect_prd_access" {
+  for_each = local.dbt_artifacts_prefect
+
   statement {
     sid       = "ListBucketPrefix"
     effect    = "Allow"
@@ -172,7 +184,7 @@ data "aws_iam_policy_document" "dbt_artifacts_prefect_prd_access" {
     condition {
       test     = "StringLike"
       variable = "s3:prefix"
-      values   = ["${local.dbt_artifacts_prefect_prd.prefix}/*"]
+      values   = ["${each.value.prefix}*"]
     }
   }
 
@@ -181,14 +193,90 @@ data "aws_iam_policy_document" "dbt_artifacts_prefect_prd_access" {
     effect  = "Allow"
     actions = ["s3:GetObject", "s3:PutObject"]
     # prefix配下の全オブジェクトが対象のため末尾ワイルドカードは構造上必須。
-    # bucket/actionはprod/*・s3:GetObject/PutObjectのみに限定済み。
+    # bucket/actionはこの workspace のバケット全体・s3:GetObject/PutObjectのみに限定済み。
     #tfsec:ignore:aws-iam-no-policy-wildcards
-    resources = ["${aws_s3_bucket.dbt_artifacts.arn}/${local.dbt_artifacts_prefect_prd.prefix}/*"]
+    resources = ["${aws_s3_bucket.dbt_artifacts.arn}/*"]
   }
 }
 
 resource "aws_iam_role_policy" "dbt_artifacts_prefect_prd" {
-  name   = "${local.dbt_artifacts_prefect_prd.role_name}-s3-access"
-  role   = aws_iam_role.dbt_artifacts_prefect_prd.name
-  policy = data.aws_iam_policy_document.dbt_artifacts_prefect_prd_access.json
+  for_each = local.dbt_artifacts_prefect
+  name     = "${each.value.role_name}-s3-access"
+  role     = aws_iam_role.dbt_artifacts_prefect_prd[each.key].name
+  policy   = data.aws_iam_policy_document.dbt_artifacts_prefect_prd_access[each.key].json
+}
+
+# ============================================================
+# Snowflake external volume 用 IAM ロール
+# ============================================================
+
+data "aws_iam_policy_document" "iceberg_access" {
+  statement {
+    sid    = "ReadWriteTableObjects"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:GetObjectVersion",
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:DeleteObjectVersion",
+    ]
+    # Snowflake が生成するオブジェクト名は事前に列挙できないため、専用バケットの tables/ 配下に限定する。
+    #tfsec:ignore:aws-iam-no-policy-wildcards
+    resources = ["${aws_s3_bucket.iceberg.arn}/tables/*"]
+  }
+
+  statement {
+    sid       = "ListTablePrefix"
+    effect    = "Allow"
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.iceberg.arn]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["tables/", "tables/*"]
+    }
+  }
+
+  statement {
+    sid       = "GetBucketRegion"
+    effect    = "Allow"
+    actions   = ["s3:GetBucketLocation"]
+    resources = [aws_s3_bucket.iceberg.arn]
+  }
+}
+
+data "aws_iam_policy_document" "iceberg_trust" {
+  statement {
+    sid     = "SnowflakeExternalVolume"
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type = "AWS"
+      identifiers = [
+        var.snowflake_iceberg_iam_user_arn == null
+        ? "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        : var.snowflake_iceberg_iam_user_arn,
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "sts:ExternalId"
+      values   = [local.iceberg_external_id]
+    }
+  }
+}
+
+resource "aws_iam_role" "iceberg" {
+  name               = "snowflake-iceberg-${local.environment}"
+  assume_role_policy = data.aws_iam_policy_document.iceberg_trust.json
+  tags               = local.iceberg_tags
+}
+
+resource "aws_iam_role_policy" "iceberg" {
+  name   = "snowflake-iceberg-${local.environment}-s3-access"
+  role   = aws_iam_role.iceberg.name
+  policy = data.aws_iam_policy_document.iceberg_access.json
 }

@@ -59,33 +59,32 @@ dev/cache/...                   # 同上(dev、優先度は低)
 
 ## 実装状況
 
-`terraform/`はSnowflakeとAWSでディレクトリ(state)を分離した。バケット本体(暗号化・バージョニング・パブリックブロック・`*/cache/*`のライフサイクルルール・タグ)は`terraform/aws/`に実装・apply済み。
+`terraform/` は Snowflake と AWS でディレクトリを分け、各ディレクトリ内で `dev` / `prd` workspace を使う。dbt 成果物用バケットと Iceberg 用バケットは同じ `terraform/aws` state で管理する。旧共有 dbt 成果物バケットは削除済み。新しい `dev` バケットは 2026-09-22 に適用済みで、`prd` は未適用。
 
 ```
 terraform/
-├── snowflake/   # 既存のSnowflakeリソース一式(backend key: snowflake/tfstate)
-└── aws/         # dbt成果物用S3バケット・IAMなど(backend key: aws/tfstate)
+├── snowflake/   # backend: snowflake/<workspace>/tfstate
+└── aws/         # dbt成果物とIceberg用S3・IAM (backend: aws/<workspace>/tfstate)
 ```
 
 AWSプロバイダの認証情報はデフォルトのAWS認証情報チェーンに委ねる方針とし、リージョンは`ap-northeast-1`で確定した。
 
 `terraform/aws/`はCI(`.github/workflows/terraform-pr.yml`)の対象外とし、applyはローカルから手動で実行する運用とした(トリガーの`paths`は`terraform/snowflake/**`のみに限定)。
 
-IAMはprod/dev用にそれぞれ専用のIAM User(`dbt-snowflake-artifacts-prod` / `dbt-snowflake-artifacts-dev`)を作成し、対応するprefix(`prod/*` / `dev/*`)のみへの`s3:ListBucket`(prefix条件付き)・`s3:GetObject`・`s3:PutObject`を許可するインラインポリシーを直接アタッチしている(専用サービスアカウントのためグループ経由にはしていない)。アクセスキーは`terraform output`(sensitive)から取得し、Prefect Secret Blockへ手動登録する想定。
+`dev` はローカル実行用 IAM User `dbt-snowflake-artifacts-dev` とアクセスキーを使い、dev 専用バケットへの List/Get/Put を許可する。`prd` に IAM User は作らず、Prefect Cloud と CI の OIDC ロールを用意する。
 
-prod用は[prefect-aws-workload-identity.md](./prefect-aws-workload-identity.md)の通りOIDC(workload identity federation)によるIAM Role方式(`dbt-snowflake-artifacts-prefect-prd`)への移行をTerraform側は実装・apply済み。Prefect Cloud側の切り替え・動作確認が済むまでは、旧IAM User(`dbt-snowflake-artifacts-prod`)を並行稼働のため残している。dev用はローカル実行前提のためUser方式のまま。
+`prd` の Prefect Cloud 用 IAM Role `dbt-snowflake-artifacts-prefect-prd` は Terraform に定義済みで、新しい `prd` workspace への apply 待ち。dev 用はローカル実行前提のため User 方式のまま。
 
 ## CI用IAM(実装済み)
 
-認証方式はGitHub Actions OIDC + IAM Role(ドキュメント旧版でいうB案)を採用した。長期的な
-静的アクセスキーをGitHub Secretsに置かないため、prod/devのUser方式より安全。
+認証方式は GitHub Actions OIDC + IAM Role を採用する。静的アクセスキーを GitHub Secrets に置かずに利用する。
 
-- **Role**: `dbt-snowflake-artifacts-ci`(`terraform/aws/iam.tf`)
+- **Role**: `dbt-snowflake-artifacts-ci-prd`(`terraform/aws/iam.tf`、prd workspace への apply 待ち)
 - **trust policy**: GitHub ActionsのOIDC(`token.actions.githubusercontent.com`。このAWS
   アカウントには`terraform-pr.yml`が使うOIDC IDプロバイダーが既に存在するため`data`で参照し、
   新規作成はしていない)経由で、`repo:KOHTA0405/dbt_snowflake:*`(リポジトリ単位、ブランチ/
   イベント不問)からのみAssumeRoleWithWebIdentityを許可
-- **権限範囲**: `prod/manifest/*`のみ、`s3:GetObject` + prefix条件付き`s3:ListBucket`。
+- **権限範囲**: prd 専用バケットの `manifest/*` のみ、`s3:GetObject` + prefix 条件付き `s3:ListBucket`。
   書き込み権限は一切持たせない(state取得専用)
 - Role ARN: `terraform output dbt_artifacts_ci_role_arn`で取得し、`dbt_snowflake`リポジトリの
   ワークフローで`aws-actions/configure-aws-credentials`の`role-to-assume`に設定する
