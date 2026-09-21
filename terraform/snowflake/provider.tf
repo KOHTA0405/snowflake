@@ -7,9 +7,11 @@ terraform {
     }
   }
   backend "s3" {
-    bucket       = "terraform-state-manage-kohta"
-    region       = "ap-northeast-1"
-    use_lockfile = true
+    bucket               = "terraform-state-manage-kohta"
+    region               = "ap-northeast-1"
+    key                  = "tfstate"
+    workspace_key_prefix = "snowflake"
+    use_lockfile         = true
   }
 }
 

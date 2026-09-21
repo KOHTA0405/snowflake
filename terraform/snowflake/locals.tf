@@ -1,6 +1,7 @@
 # 環境設定と共通設定
 locals {
-  environment = terraform.workspace
+  environment     = terraform.workspace
+  iceberg_storage = lookup(var.iceberg_storage, local.environment, null)
 
   environment_defaults = {
     warehouse_size       = "XSMALL"

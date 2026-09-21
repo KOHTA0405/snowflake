@@ -292,7 +292,7 @@ terraform plan
 
 `terraform state rm` は選択中の backend と workspace の state だけを変更し、Snowflake 上の権限は取り消しません。バックアップには秘密情報を含む可能性があるため、安全な場所に保管してください。この操作後、`removed` ブロックは該当リソースが state に存在しない workspace で何も変更しません。別の workspace に移行するときは、同じ確認と操作が別途必要です。
 
-Snowflake の Terraform state は、同じ S3 バケット内で `snowflake/<account-name>/tfstate` に分けます。`terraform/snowflake/init-backend.sh` はローカルでは `.env` の `TF_VAR_SNOWFLAKE_ACCOUNT` 行だけを読み、CI では同名の環境変数を使います。`.env` の他の認証情報は読み込みません。スクリプトは `-reconfigure` を使い、既存 state はコピーしません。既存の `snowflake/tfstate` は旧アカウント用として残るため、旧アカウントを継続管理する場合は、その state の復旧と新キーへの移行を別途行う必要があります。
+Snowflake の Terraform state は、同じ S3 バケット内で `snowflake/dev/tfstate` と `snowflake/prd/tfstate` に分けます。`terraform/snowflake/init-backend.sh` は固定 backend 設定に対して `terraform init -reconfigure` を実行します。旧 `snowflake/QR52630/...` 配置から `dev` state は 2026-09-22 に `terraform init -migrate-state` で移行済みです。
 
 ```sh
 bash ./init-backend.sh
