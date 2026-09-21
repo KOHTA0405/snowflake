@@ -12,6 +12,7 @@ locals {
     "change_schema" = [
       "USAGE",
       "CREATE TABLE",
+      "CREATE ICEBERG TABLE",
       "CREATE VIEW",
       "CREATE FILE FORMAT",
       "CREATE STAGE",
@@ -29,4 +30,3 @@ locals {
     ]
   }
 }
-
