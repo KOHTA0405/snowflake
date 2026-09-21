@@ -3,7 +3,7 @@ terraform {
   required_providers {
     snowflake = {
       source  = "snowflakedb/snowflake"
-      version = "~> 2.12.0"
+      version = "~> 2.21.0"
     }
   }
   backend "s3" {
@@ -48,7 +48,6 @@ provider "snowflake" {
   private_key       = var.SNOWFLAKE_PRIVATE_KEY
   warehouse         = var.SNOWFLAKE_WAREHOUSE
   preview_features_enabled = [
-    "snowflake_network_rule_resource",
     "snowflake_stage_resource",
   ]
 }
