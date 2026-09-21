@@ -93,18 +93,18 @@ resource "snowflake_secret_with_generic_string" "dlt_snowflake_private_key" {
   secret_string = var.DLT_SNOWFLAKE_PRIVATE_KEY
 }
 
-# --- Compute Pool (ACCOUNTADMIN required) ---
+# --- Compute Pool (CREATE COMPUTE POOL is granted to SYSADMIN during bootstrap) ---
 
-resource "snowflake_grant_privileges_to_account_role" "create_compute_pool_to_sysadmin" {
-  provider          = snowflake.accountadmin
-  account_role_name = "SYSADMIN"
-  privileges        = ["CREATE COMPUTE POOL"]
-  on_account        = true
+removed {
+  from = snowflake_grant_privileges_to_account_role.create_compute_pool_to_sysadmin
+
+  lifecycle {
+    destroy = false
+  }
 }
 
 resource "snowflake_compute_pool" "dlt_pool" {
   provider            = snowflake.sysadmin
-  depends_on          = [snowflake_grant_privileges_to_account_role.create_compute_pool_to_sysadmin]
   name                = local.dlt.compute_pool.name
   min_nodes           = local.dlt.compute_pool.min_nodes
   max_nodes           = local.dlt.compute_pool.max_nodes
@@ -275,13 +275,14 @@ resource "snowflake_grant_privileges_to_account_role" "dlt_role_secret_key_read"
   }
 }
 
-# --- Account-level grant: EXECUTE TASK to SYSADMIN ---
+# --- EXECUTE TASK is granted to SYSADMIN during bootstrap ---
 
-resource "snowflake_grant_privileges_to_account_role" "execute_task_to_sysadmin" {
-  provider          = snowflake.accountadmin
-  account_role_name = "SYSADMIN"
-  privileges        = ["EXECUTE TASK"]
-  on_account        = true
+removed {
+  from = snowflake_grant_privileges_to_account_role.execute_task_to_sysadmin
+
+  lifecycle {
+    destroy = false
+  }
 }
 
 # --- Task ---

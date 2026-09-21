@@ -260,11 +260,49 @@ SELECT SYSTEM$GET_SERVICE_LOGS('dlt_demo.public.dlt_jsonplaceholder_job', 0, 'dl
 | `GRANT`（warehouse/database/schema） | `SECURITYADMIN` または対象オブジェクトの OWNERSHIP |
 | `CREATE IMAGE REPOSITORY` | スキーマへの `CREATE IMAGE REPOSITORY` |
 | `CREATE SECRET` | スキーマへの `CREATE SECRET` |
-| `CREATE COMPUTE POOL` | **`ACCOUNTADMIN`** |
-| `CREATE EXTERNAL ACCESS INTEGRATION` | **`ACCOUNTADMIN`** |
+| `CREATE COMPUTE POOL` | アカウントに対する `CREATE COMPUTE POOL` 権限（初回に `ACCOUNTADMIN` が付与） |
+| `CREATE EXTERNAL ACCESS INTEGRATION` | アカウントに対する `CREATE INTEGRATION` 権限（初回に `ACCOUNTADMIN` が付与） |
 | `EXECUTE JOB SERVICE` | コンピュートプールへの `USAGE` |
 
-`CREATE COMPUTE POOL` と `CREATE EXTERNAL ACCESS INTEGRATION` が `ACCOUNTADMIN` 必須のため、**このユーザーには `ACCOUNTADMIN` ロールが必要**です。
+Terraform 実行ユーザーに `ACCOUNTADMIN` を付与する必要はありません。初回セットアップ時に管理者が以下を実行し、通常の Terraform 実行では `SYSADMIN` を使用します。
+
+```sql
+USE ROLE ACCOUNTADMIN;
+GRANT CREATE COMPUTE POOL ON ACCOUNT TO ROLE SYSADMIN;
+GRANT CREATE INTEGRATION ON ACCOUNT TO ROLE SYSADMIN;
+GRANT EXECUTE TASK ON ACCOUNT TO ROLE SYSADMIN;
+GRANT MODIFY LOG LEVEL ON ACCOUNT TO ROLE SYSADMIN;
+SHOW GRANTS TO ROLE SYSADMIN;
+```
+
+Terraform の `snowflake.sysadmin` と `snowflake.security_admin` はそれぞれ `SYSADMIN` と `SECURITYADMIN` を明示して接続します。Terraform 実行ユーザーがこれらのロールを使用できることを `SHOW GRANTS TO USER <user_name>` で確認してください。カスタムロールに両ロールを継承させているだけの場合は、ユーザーが個々のロールを直接指定して接続できるかも確認が必要です。
+
+従来 Terraform が管理していた `CREATE COMPUTE POOL` と `EXECUTE TASK` の付与は state から除外します。ただし、state に残るリソースは元の `snowflake.accountadmin` プロバイダーを参照するため、`removed` ブロックだけでは `Provider configuration not present` になります。**以下は既存 Snowflake アカウントの state を移行する場合に限ります。別の Snowflake アカウントを追加する場合には実行せず、先に別の S3 state キーへ `terraform init -reconfigure` してください。** 管理者による上記の権限付与を確認した後、該当アカウント用の backend で次を一度だけ実行します。
+
+```sh
+terraform workspace show  # 移行対象の workspace であることを確認
+terraform state rm -dry-run \
+  'snowflake_grant_privileges_to_account_role.create_compute_pool_to_sysadmin' \
+  'snowflake_grant_privileges_to_account_role.execute_task_to_sysadmin'
+terraform state rm \
+  'snowflake_grant_privileges_to_account_role.create_compute_pool_to_sysadmin' \
+  'snowflake_grant_privileges_to_account_role.execute_task_to_sysadmin'
+terraform plan
+```
+
+`terraform state rm` は選択中の backend と workspace の state だけを変更し、Snowflake 上の権限は取り消しません。バックアップには秘密情報を含む可能性があるため、安全な場所に保管してください。この操作後、`removed` ブロックは該当リソースが state に存在しない workspace で何も変更しません。別の workspace に移行するときは、同じ確認と操作が別途必要です。
+
+Snowflake の Terraform state は、同じ S3 バケット内で `snowflake/<account-name>/tfstate` に分けます。`terraform/snowflake/init-backend.sh` はローカルでは `.env` の `TF_VAR_SNOWFLAKE_ACCOUNT` 行だけを読み、CI では同名の環境変数を使います。`.env` の他の認証情報は読み込みません。スクリプトは `-reconfigure` を使い、既存 state はコピーしません。既存の `snowflake/tfstate` は旧アカウント用として残るため、旧アカウントを継続管理する場合は、その state の復旧と新キーへの移行を別途行う必要があります。
+
+```sh
+bash ./init-backend.sh
+terraform workspace select dev || terraform workspace new dev
+terraform workspace show
+terraform state list  # 新規 workspace なら空であることを確認
+terraform plan
+```
+
+失敗した apply が新アカウントにリソースを一部作成している可能性があります。新しい state で直ちに apply せず、plan の作成予定と実在するオブジェクトを照合してから import の要否を判断してください。既存の S3 state は失敗した apply と `state rm` により変更されているため、旧アカウントへ戻る前に S3 バージョン履歴や Terraform の state バックアップを確認してください。
 
 ### 2. Snowflake CLI ユーザー（`snow spcs image-registry login` / `docker push` に使うユーザー）
 
