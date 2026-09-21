@@ -8,6 +8,22 @@
 - Snowflake の `DEV` と `PRD` は同じアカウント内の別データベース。Iceberg 用 AWS Terraform と Snowflake Terraform は、それぞれ `dev` / `prd` workspace を使う。AWS 側と Snowflake 側は別 state。
 - 2026-09-22 時点の設計。対象 provider は `snowflakedb/snowflake` 2.21 系。
 
+## まず全体像
+
+Iceberg テーブルは Snowflake 上で作成・管理するが、実際のデータとメタデータは AWS の S3 に保存する。その接続のために、AWS 側と Snowflake 側で次を用意する。
+
+| 用意するもの | 何のために必要か |
+| --- | --- |
+| AWS の Iceberg 用 S3 バケット | テーブルのデータとメタデータを保存する場所。dev と prd で別バケットにする。 |
+| AWS の IAM ロール | Snowflake が対応するバケットの `tables/` 配下を読み書きするための権限。 |
+| Snowflake の external volume | S3 の保存先と AWS IAM ロールを Snowflake に教える接続設定。dev は `ICEBERG_DEV`、prd は `ICEBERG_PRD`。 |
+| dbt 実行ロールへの volume の `USAGE` | dbt がその external volume を使って Iceberg テーブルを作成できるようにする。 |
+| `GOLD` スキーマの既定設定 | Iceberg テーブルが使う volume を指定し、他エンジンでも読みやすい `COMPATIBLE` 形式で書き込む。 |
+
+処理の流れは「dbt の対象モデル → Snowflake の Iceberg テーブル → external volume → AWS IAM ロール → S3」。dbt は Iceberg にしたいモデルだけ `materialized='table'` と `table_format='iceberg'` を指定する。`GOLD` スキーマに volume を設定しても、既存の view や通常の table が自動で Iceberg に変わるわけではない。外部ストレージを確実に使うため、モデル側でも対応する `ICEBERG_DEV` / `ICEBERG_PRD` を明示する。
+
+現在構築済みなのは dev の AWS・Snowflake リソースだけ。prd は Terraform に定義済みだが、まだ apply していない。外部 volume の S3 読み書き検証と、dbt モデルの実行もこれから行う。
+
 ## 構成
 
 | 環境 | S3 バケット | 保存先 | AWS IAM ロール | Snowflake external volume |
@@ -15,7 +31,7 @@
 | dev | `kohta-snowflake-iceberg-dev` | `s3://kohta-snowflake-iceberg-dev/tables/` | `snowflake-iceberg-dev` | `ICEBERG_DEV` |
 | prd | `kohta-snowflake-iceberg-prd` | `s3://kohta-snowflake-iceberg-prd/tables/` | `snowflake-iceberg-prd` | `ICEBERG_PRD` |
 
-バケット名は環境名で分ける。dbt 成果物用バケットも環境ごとに分離する。各環境の volume は、その環境に属する複数の Iceberg テーブルで共有する。Snowflake が `tables/<database>/<schema>/<table>/...` 以下にデータとメタデータを書き込む。テーブル単位の保存先は Snowflake に管理させ、dbt から `BASE_LOCATION` は指定しない。
+バケット名は環境名で分ける。dbt 成果物用バケットも環境ごとに分離する。各環境の volume は、その環境に属する複数の Iceberg テーブルで共有する。テーブルごとの `BASE_LOCATION` は dbt が既定で `_dbt/<schema>/<model>` の形に設定するため、通常はモデル側で変更しない。
 
 ## AWS 側
 
