@@ -38,6 +38,8 @@ variable "LIGHTDASH_USER_RSA_PUBLIC_KEY" {
   sensitive   = true
 }
 
+# Temporarily disabled with spcs.tf while the dlt pipeline is unused.
+/*
 variable "DLT_USER_RSA_PUBLIC_KEY" {
   description = "RSA public key for dlt_user. Must be on 1 line without header and trailer."
   type        = string
@@ -57,3 +59,4 @@ variable "DLT_S3_STAGE_HOST" {
   type        = string
   default     = null
 }
+*/

@@ -1,3 +1,6 @@
+# Temporarily disabled while the dlt pipeline is unused.
+# Existing managed resources will be planned for destruction.
+/*
 # ============================================================
 # SPCS + dlt リソース
 # ============================================================
@@ -304,3 +307,4 @@ resource "snowflake_task" "dlt_jsonplaceholder" {
   started = false
   comment = local.dlt.task.comment
 }
+*/

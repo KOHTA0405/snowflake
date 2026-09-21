@@ -1,3 +1,5 @@
+# Temporarily disabled with spcs.tf while the dlt pipeline is unused.
+/*
 locals {
   dlt = {
     database = "DLT_DEMO"
@@ -38,3 +40,4 @@ locals {
     }
   }
 }
+*/
