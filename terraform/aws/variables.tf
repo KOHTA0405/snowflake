@@ -1,7 +1,7 @@
 variable "snowflake_iceberg_iam_user_arn" {
-  description = "STORAGE_AWS_IAM_USER_ARN from DESC EXTERNAL VOLUME. Null during initial bootstrap only."
+  description = "STORAGE_AWS_IAM_USER_ARN from DESC EXTERNAL VOLUME. Use null only during initial bootstrap."
   type        = string
-  default     = null
+  default     = "arn:aws:iam::687622360952:user/hls72000-s"
 
   validation {
     condition = (

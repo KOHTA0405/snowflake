@@ -62,23 +62,3 @@ variable "DLT_S3_STAGE_HOST" {
   type        = string
   default     = null
 }
-variable "iceberg_storage" {
-  description = "Iceberg S3 storage details from terraform/aws outputs, keyed by Terraform workspace. Omit until AWS bootstrap is ready."
-  type = map(object({
-    bucket      = string
-    role_arn    = string
-    external_id = string
-  }))
-  default = {}
-
-  validation {
-    condition = alltrue([
-      for env, storage in var.iceberg_storage :
-      contains(["dev", "prd"], env) &&
-      can(regex("^[a-z0-9][a-z0-9.-]+$", storage.bucket)) &&
-      can(regex("^arn:aws:iam::[0-9]{12}:role/.+$", storage.role_arn)) &&
-      length(storage.external_id) > 0
-    ])
-    error_message = "iceberg_storage must contain dev/prd keys with an S3 bucket, AWS IAM role ARN, and external ID."
-  }
-}

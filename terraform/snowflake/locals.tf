@@ -1,7 +1,11 @@
 # 環境設定と共通設定
 locals {
-  environment     = terraform.workspace
-  iceberg_storage = lookup(var.iceberg_storage, local.environment, null)
+  environment = terraform.workspace
+  iceberg_storage = contains(["dev", "prd"], local.environment) ? {
+    bucket      = "kohta-snowflake-iceberg-${local.environment}"
+    role_arn    = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/snowflake-iceberg-${local.environment}"
+    external_id = uuidv5("6ba7b810-9dad-11d1-80b4-00c04fd430c8", "${data.aws_caller_identity.current.account_id}:snowflake-iceberg:${local.environment}")
+  } : null
 
   environment_defaults = {
     warehouse_size       = "XSMALL"

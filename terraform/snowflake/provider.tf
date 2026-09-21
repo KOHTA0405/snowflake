@@ -1,6 +1,10 @@
 terraform {
   required_version = "~> 1.13.0"
   required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
     snowflake = {
       source  = "snowflakedb/snowflake"
       version = "~> 2.21.0"
@@ -14,6 +18,12 @@ terraform {
     use_lockfile         = true
   }
 }
+
+provider "aws" {
+  region = "ap-northeast-1"
+}
+
+data "aws_caller_identity" "current" {}
 
 # USERADMINロール用のエイリアス（ユーザー管理専用）
 provider "snowflake" {

@@ -60,7 +60,7 @@ Snowflake 管理の Iceberg テーブルは書き込みを行うため、volume 
 - `GOLD` スキーマに `EXTERNAL_VOLUME = ICEBERG_<ENV>` と `STORAGE_SERIALIZATION_POLICY = COMPATIBLE` を設定する。後者は DuckDB など他エンジンとの互換性を確保するため、最初の Iceberg テーブル作成前に設定する。テーブル作成後に当該テーブルの serialization policy は変更できない。
 - Gold 内でも dbt で Iceberg と明示したモデルだけをテーブル化する。既存の view モデルは段階的に切り替える。
 
-Snowflake Terraform には `iceberg_storage` 変数を設ける。未設定の workspace では volume と Gold の既定値を作成・変更しない。対応する AWS workspace の `iceberg_bucket_name`、`iceberg_role_arn`、`iceberg_external_id` の各 output を Snowflake 側の `iceberg_storage` に渡す。変数値を source code にハードコードせず、Git 管理外の `.tfvars` または実行環境から供給する。作成後は後続の plan・apply でも同じ値を渡す。値を省略した場合は `prevent_destroy` により plan が失敗する。
+Snowflake Terraform は選択中の `dev` / `prd` workspace と AWS caller identity から、対応する Iceberg バケット名、IAM ロール ARN、固定 external ID を自動的に組み立てる。AWS と Snowflake の Terraform 実行には同じ AWS アカウントの認証情報を使う。`default` workspace では volume と Gold の既定値を作成・変更しない。AWS state 全体には dev 用アクセスキーが含まれるため、Snowflake 側から remote state を読み取らない。
 
 DuckDB の参照ロールは Gold のデータベース・スキーマ `USAGE` と対象 Iceberg テーブル `SELECT` に絞る。DuckDB は Horizon Catalog に認証し、credential vending を使う。DuckDB に external volume の `USAGE` や S3 IAM ロールは付与しない。
 
@@ -68,11 +68,11 @@ DuckDB の参照ロールは Gold のデータベース・スキーマ `USAGE` �
 
 AWS と Snowflake が別 state のため、初回は段階的に構築する。
 
-1. `terraform/aws` で通常の `terraform init` を実行し、`terraform workspace new dev` または `terraform workspace select dev` で `dev` を選択する。`terraform workspace show` が `dev` であることを確認してから plan・apply する。`snowflake_iceberg_iam_user_arn` は初回だけ未設定にする。この場合、IAM 信頼ポリシーは自 AWS アカウントの root principal と環境専用 external ID に限定される一時状態となる。この時点で Snowflake からのアクセスはできない。
+1. `terraform/aws` で通常の `terraform init` を実行し、`terraform workspace new dev` または `terraform workspace select dev` で `dev` を選択する。`terraform workspace show` が `dev` であることを確認してから plan・apply する。Snowflake IAM ユーザー ARN がまだ不明な初回構築時は、`snowflake_iceberg_iam_user_arn` の既定値を一時的に `null` にする。この場合、IAM 信頼ポリシーは自 AWS アカウントの root principal と環境専用 external ID に限定される一時状態となる。この時点で Snowflake からのアクセスはできない。
 2. 1 回だけ `ACCOUNTADMIN` で `GRANT CREATE EXTERNAL VOLUME ON ACCOUNT TO ROLE SYSADMIN` を実行する。
-3. Snowflake Terraform の `dev` workspace に `iceberg_storage` の `bucket`、`role_arn`、`external_id` を AWS outputs から渡し、volume、dbt ロールへの `USAGE`、Gold スキーマの既定値を plan・apply する。external ID は手順 1 と同じ値を明示する。
+3. Snowflake Terraform の `dev` workspace で plan を確認し、volume、dbt ロールへの `USAGE`、Gold スキーマの既定値を apply する。バケット名・ロール ARN・external ID は AWS 側と同じ規則から自動設定される。Snowflake 接続用の `TF_VAR_SNOWFLAKE_*` は実行前に読み込む。
 4. `DESC EXTERNAL VOLUME ICEBERG_DEV` から `STORAGE_AWS_IAM_USER_ARN` を取得する。Snowflake はアカウント内の S3 external volume に同じ IAM ユーザーを使う。
-5. AWS `dev` workspace の `snowflake_iceberg_iam_user_arn` に取得した ARN を渡し、信頼ポリシーを Snowflake IAM ユーザー ARN に変更する。AWS の plan で差分が信頼ポリシーの principal のみであることを確認する。この値を後続の plan・apply でも継続して渡す。
+5. AWS `dev` workspace の `snowflake_iceberg_iam_user_arn` に取得した ARN を設定し、信頼ポリシーを Snowflake IAM ユーザー ARN に変更する。AWS の plan で差分が信頼ポリシーの principal のみであることを確認する。取得済みの ARN は変数の既定値に保存してあり、後続の plan・apply でも維持する。
 6. `SELECT SYSTEM$VERIFY_EXTERNAL_VOLUME('ICEBERG_DEV')` で認証と書き込みを検証する。
 7. `prd` についても AWS workspace の作成・apply、Snowflake workspace の apply、AWS 信頼ポリシー更新・apply、volume 検証を同じ順序で行う。既に取得した Snowflake IAM ユーザー ARN を再利用できる。
 8. 対応する Gold モデルを Iceberg テーブルとして作り、Horizon Catalog 経由で DuckDB から読めることを確認する。
@@ -91,7 +91,7 @@ AWS と Snowflake が別 state のため、初回は段階的に構築する。
 
 - 設計書、AWS ルートの Iceberg 用 S3・IAM、Snowflake の volume・権限・Gold スキーマ既定値を Terraform に追加済み。
 - Iceberg 用 AWS リソースを `terraform/aws` に統合済み。AWS と Snowflake の backend は provider / workspace 順の key に整理済み。
-- AWS `dev` workspace は 14 リソースを apply 済みで、直後の plan は差分なし。Iceberg IAM ロールは Snowflake IAM ユーザー ARN を取得するまで初回接続用の一時的な信頼設定。AWS `prd` / Snowflake の apply、dbt モデル変更、DuckDB 接続確認は未実施。
+- AWS `dev` workspace と Snowflake `dev` workspace は apply 済み。`ICEBERG_DEV` を作成し、AWS Iceberg ロールの信頼先を Snowflake IAM ユーザー ARN に更新済み。volume の接続検証、AWS `prd` / Snowflake `prd` の apply、dbt モデル変更、DuckDB 接続確認は未実施。
 
 ## 参照資料
 
