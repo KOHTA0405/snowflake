@@ -38,8 +38,9 @@ variable "LIGHTDASH_USER_RSA_PUBLIC_KEY" {
   sensitive   = true
 }
 
-# Temporarily disabled with spcs.tf while the dlt pipeline is unused.
-/*
+# Keep these declarations while dlt is disabled so existing terraform.tfvars
+# values do not produce undeclared-variable warnings during plan.
+# tflint-ignore: terraform_unused_declarations
 variable "DLT_USER_RSA_PUBLIC_KEY" {
   description = "RSA public key for dlt_user. Must be on 1 line without header and trailer."
   type        = string
@@ -47,6 +48,7 @@ variable "DLT_USER_RSA_PUBLIC_KEY" {
   sensitive   = true
 }
 
+# tflint-ignore: terraform_unused_declarations
 variable "DLT_SNOWFLAKE_PRIVATE_KEY" {
   description = "Private key content (PEM) stored as a Snowflake secret for dlt to authenticate to Snowflake."
   type        = string
@@ -54,9 +56,9 @@ variable "DLT_SNOWFLAKE_PRIVATE_KEY" {
   default     = null
 }
 
+# tflint-ignore: terraform_unused_declarations
 variable "DLT_S3_STAGE_HOST" {
   description = "S3 hostname for Snowflake internal stage. Account/region-specific (e.g. sfc-jp-ds1-24-customer-stage.s3.amazonaws.com). Confirm from error logs on first pipeline run."
   type        = string
   default     = null
 }
-*/
