@@ -9,7 +9,6 @@ terraform {
   backend "s3" {
     bucket       = "terraform-state-manage-kohta"
     region       = "ap-northeast-1"
-    key          = "snowflake/tfstate"
     use_lockfile = true
   }
 }
