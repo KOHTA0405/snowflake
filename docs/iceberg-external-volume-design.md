@@ -73,12 +73,19 @@ Snowflake 管理の Iceberg テーブルは書き込みを行うため、volume 
 - `snowflake_external_volume` を 1 件。`STORAGE_PROVIDER = S3`、`STORAGE_BASE_URL` は上表の `tables/`、`STORAGE_AWS_ROLE_ARN` は対応する IAM ロール、`STORAGE_AWS_EXTERNAL_ID` は環境専用の固定値を指定する。
 - volume は SYSADMIN 所有とする。初回のみ `ACCOUNTADMIN` から `SYSADMIN` に `CREATE EXTERNAL VOLUME` アカウント権限を付与する。通常の Terraform 実行で `ACCOUNTADMIN` は使わない。
 - dbt 実行ロール `ADMINISTRATOR_DEV` / `ADMINISTRATOR_PRD` に対応する volume の `USAGE` を付与する。Iceberg テーブルの所有ロールは `USAGE` を維持する。
+- 読取用 database role `READ_DEV` / `READ_PRD` に、Gold スキーマ内の既存・将来の Iceberg table に対する `SELECT` を付与する。Iceberg table は通常の `TABLES` と別の object type のため、専用の grant が必要。`DEVELOPER_<ENV>`、`ANALYST_<ENV>`、`LIGHTDASH_<ENV>` はこの role を継承する。
 - `GOLD` スキーマに `EXTERNAL_VOLUME = ICEBERG_<ENV>` と `STORAGE_SERIALIZATION_POLICY = COMPATIBLE` を設定する。後者は DuckDB など他エンジンとの互換性を確保するため、最初の Iceberg テーブル作成前に設定する。テーブル作成後に当該テーブルの serialization policy は変更できない。
 - Gold 内でも dbt で Iceberg と明示したモデルだけをテーブル化する。既存の view モデルは段階的に切り替える。
 
 Snowflake Terraform は選択中の `dev` / `prd` workspace と AWS caller identity から、対応する Iceberg バケット名、IAM ロール ARN、固定 external ID を自動的に組み立てる。AWS と Snowflake の Terraform 実行には同じ AWS アカウントの認証情報を使う。`default` workspace では volume と Gold の既定値を作成・変更しない。AWS state 全体には dev 用アクセスキーが含まれるため、Snowflake 側から remote state を読み取らない。
 
 DuckDB の参照ロールは Gold のデータベース・スキーマ `USAGE` と対象 Iceberg テーブル `SELECT` に絞る。DuckDB は Horizon Catalog に認証し、credential vending を使う。DuckDB に external volume の `USAGE` や S3 IAM ロールは付与しない。
+
+### ローカル DuckDB 用 PAT
+
+`dev` workspace では、個人ユーザー `KOHTA` に 7 日間有効な `DUCKDB_ICEBERG_DEV` PAT を Terraform で発行し、`DEVELOPER_DEV` ロールに限定する。PAT の実値は Terraform state に記録されるが、Terraform output には追加せず、通常の plan・apply や CI ログに表示しない。state を読める AWS 権限は PAT の実値も取得できるため、state バケットへのアクセスを制限する。
+
+PAT の利用には原則として Snowflake のネットワークポリシーが必要。接続するローカル環境の IP アドレスに応じた設定を確認する。PAT は読み取り対象テーブルの権限を増やさないため、`DEVELOPER_DEV` が対象 Iceberg テーブルに `SELECT` を持つことも確認する。期限切れ後の再発行・ローテーションは別途実施する。
 
 ## 初回接続手順
 
@@ -107,7 +114,7 @@ AWS と Snowflake が別 state のため、初回は段階的に構築する。
 
 - 設計書、AWS ルートの Iceberg 用 S3・IAM、Snowflake の volume・権限・Gold スキーマ既定値を Terraform に追加済み。
 - Iceberg 用 AWS リソースを `terraform/aws` に統合済み。AWS と Snowflake の backend は provider / workspace 順の key に整理済み。
-- AWS `dev` workspace と Snowflake `dev` workspace は apply 済み。`ICEBERG_DEV` を作成し、AWS Iceberg ロールの信頼先を Snowflake IAM ユーザー ARN に更新済み。volume の接続検証、AWS `prd` / Snowflake `prd` の apply、dbt モデル変更、DuckDB 接続確認は未実施。
+- AWS `dev` workspace と Snowflake `dev` workspace は apply 済み。`ICEBERG_DEV` を作成し、AWS Iceberg ロールの信頼先を Snowflake IAM ユーザー ARN に更新済み。ローカル DuckDB 用の dev PAT も発行済み。dbt の Iceberg 動作確認モデルは実行成功。volume の接続検証、AWS `prd` / Snowflake `prd` の apply、DuckDB 接続確認は未実施。
 
 ## 参照資料
 

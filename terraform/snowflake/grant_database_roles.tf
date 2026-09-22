@@ -56,6 +56,21 @@ module "grant_table_privileges_to_read_role" {
   }
 }
 
+# Iceberg tables are a distinct Snowflake object type and are not covered by
+# grants on TABLES.
+module "grant_iceberg_table_privileges_to_read_role" {
+  source = "./modules/grant_database_role/privileges_for_schema_object"
+
+  database_role_name = module.database_roles["read"].database_role_fully_qualified_name
+  privilege_list     = local.privileges_to_database_role["read"]
+  object_type        = "ICEBERG TABLES"
+  schema_name        = module.schemas["gold"].schema_fully_qualified_name
+
+  providers = {
+    snowflake.security_admin = snowflake.security_admin
+  }
+}
+
 # Grant view privileges to read database_role for all schemas
 module "grant_view_privileges_to_read_role" {
   source   = "./modules/grant_database_role/privileges_for_schema_object"
