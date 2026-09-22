@@ -81,11 +81,75 @@ Snowflake Terraform は選択中の `dev` / `prd` workspace と AWS caller ident
 
 DuckDB の参照ロールは Gold のデータベース・スキーマ `USAGE` と対象 Iceberg テーブル `SELECT` に絞る。DuckDB は Horizon Catalog に認証し、credential vending を使う。DuckDB に external volume の `USAGE` や S3 IAM ロールは付与しない。
 
+### ローカル DuckDB から読み取る仕組み
+
+ローカルの DuckDB は S3 に直接ログインしない。`scripts/test.py` が Terraform state から PAT をプロセス内だけで取得し、Snowflake Horizon Catalog から短時間だけ有効な認証情報を受け取って Iceberg テーブルを読む。
+
+#### Horizon Catalog とは
+
+Horizon Catalog は、Snowflake が提供する外部エンジン向けの Iceberg REST Catalog である。DuckDB などが Snowflake 管理 Iceberg テーブルを読むときの窓口になり、テーブルの発見、Snowflake 権限の確認、一時的な S3 認証情報の発行を担う。
+
+Horizon Catalog 自体は、既存の Snowflake アカウントで提供されるマネージド機能であり、今回 Terraform で `CREATE` する個別の Snowflake オブジェクトではない。接続先はアカウント識別子から決まる Horizon Iceberg REST Catalog のエンドポイントで、DuckDB のスクリプト側で指定する。
+
+Terraform では Horizon Catalog そのものではなく、Catalog 経由のアクセスに必要な周辺設定を管理する。
+
+| Terraform で管理するもの | Horizon Catalog との関係 |
+| --- | --- |
+| Snowflake 管理 Iceberg table と `external volume` | Catalog が公開するテーブルと、その S3 保存先を定義する。 |
+| `DEVELOPER_DEV` と `READ_DEV` の権限 | Catalog が DuckDB の読み取りを認可する根拠になる。 |
+| DuckDB 用 PAT | Catalog への認証と短期 access token の取得に使う。 |
+| AWS の S3・IAM ロール | Snowflake が external volume 経由でデータを保存し、Catalog が短期 S3 認証情報を発行する基盤になる。 |
+
+したがって、Horizon Catalog 用の Terraform resource を追加する必要はない。DuckDB がどの Catalog URL に接続するかは、Terraform ではなく `scripts/test.py` のクライアント設定として管理する。
+
+`external volume` と Horizon Catalog は用途が異なる。
+
+| 設定 | 主な利用者 | 役割 |
+| --- | --- | --- |
+| external volume | Snowflake | Iceberg テーブルのデータ・メタデータを S3 に保存する場所と、Snowflake が S3 を操作する IAM ロールを定義する。 |
+| Horizon Catalog | DuckDB などの外部エンジン | Snowflake 管理の Iceberg テーブルを発見させ、Snowflake の権限で認可し、S3 読取り用の短期認証情報を渡す API を提供する。 |
+
+つまり DuckDB は external volume を直接利用せず、Horizon Catalog の Iceberg REST API に接続する。Horizon Catalog が確認した Snowflake のテーブル権限に基づき、必要な範囲・期間に限った S3 認証情報を DuckDB に返す。
+
+```mermaid
+sequenceDiagram
+    participant D as ローカル DuckDB
+    participant T as Terraform state（S3 backend）
+    participant H as Snowflake Horizon Catalog
+    participant S as Iceberg 用 S3 バケット
+
+    D->>T: state pull で PAT を取得（画面・ログには出さない）
+    T-->>D: DUCKDB_ICEBERG_DEV PAT
+    D->>H: PAT を DEVELOPER_DEV の短期 access token に交換
+    H-->>D: 短期 access token
+    D->>H: Iceberg REST Catalog のメタデータを要求
+    H-->>D: テーブルメタデータと一時的な S3 認証情報
+    D->>S: Parquet と Iceberg メタデータを読み取る
+```
+
+読み取り時の責務は次のように分かれる。
+
+| 段階 | 実行すること | 認可する主体 |
+| --- | --- | --- |
+| 1. PAT の取得 | スクリプトが `terraform state pull` を実行し、state 内の PAT をメモリ上で読む | state backend への AWS 読取権限 |
+| 2. Snowflake へのログイン | PAT を `DEVELOPER_DEV` に限定した短期 access token に交換する | Snowflake の認証ポリシー・ネットワークポリシー |
+| 3. テーブルの発見 | DuckDB が Horizon の Iceberg REST Catalog に `DEV` catalog を attach する | `DEV` database / `GOLD` schema の `USAGE` と Iceberg table の `SELECT` |
+| 4. ファイルの読取り | Horizon が返した一時的な S3 認証情報を DuckDB が使用する | Snowflake が external volume 経由で管理する S3 権限 |
+
+したがって、開発者のローカル環境には AWS アクセスキー、Iceberg 用 IAM ロール、external volume の `USAGE` を配布しない。`ICEBERG_DEV` は Snowflake が S3 へ書き込むための設定であり、DuckDB が直接使う接続先ではない。DuckDB が使うのは Horizon Catalog の URL と、その都度発行される短期認証情報である。
+
+接続確認は dbt リポジトリから次を実行する。スクリプトは `horizon.GOLD.ICEBERG_SMOKE_TEST` を一覧・読取り確認する。
+
+```bash
+cd /Users/kohta/workspace/dbt_snowflake
+uv run python jaffle_shop/scripts/test.py
+```
+
 ### ローカル DuckDB 用 PAT
 
 `dev` workspace では、個人ユーザー `KOHTA` に 7 日間有効な `DUCKDB_ICEBERG_DEV` PAT を Terraform で発行し、`DEVELOPER_DEV` ロールに限定する。PAT の実値は Terraform state に記録されるが、Terraform output には追加せず、通常の plan・apply や CI ログに表示しない。state を読める AWS 権限は PAT の実値も取得できるため、state バケットへのアクセスを制限する。
 
-PAT の利用には原則として Snowflake のネットワークポリシーが必要。接続するローカル環境の IP アドレスに応じた設定を確認する。PAT は読み取り対象テーブルの権限を増やさないため、`DEVELOPER_DEV` が対象 Iceberg テーブルに `SELECT` を持つことも確認する。期限切れ後の再発行・ローテーションは別途実施する。
+PAT の利用には原則として Snowflake のネットワークポリシーが必要。現時点では学習用の暫定設定として、発行直後 60 分間だけネットワークポリシーなしで利用できるようにしている。継続利用する場合は、ローカル環境の送信元 IP を許可するネットワークポリシーに置き換える。PAT は読み取り対象テーブルの権限を増やさないため、`DEVELOPER_DEV` が対象 Iceberg テーブルに `SELECT` を持つことも確認する。期限切れ後の再発行・ローテーションは別途実施する。
 
 ## 初回接続手順
 
@@ -114,7 +178,7 @@ AWS と Snowflake が別 state のため、初回は段階的に構築する。
 
 - 設計書、AWS ルートの Iceberg 用 S3・IAM、Snowflake の volume・権限・Gold スキーマ既定値を Terraform に追加済み。
 - Iceberg 用 AWS リソースを `terraform/aws` に統合済み。AWS と Snowflake の backend は provider / workspace 順の key に整理済み。
-- AWS `dev` workspace と Snowflake `dev` workspace は apply 済み。`ICEBERG_DEV` を作成し、AWS Iceberg ロールの信頼先を Snowflake IAM ユーザー ARN に更新済み。ローカル DuckDB 用の dev PAT も発行済み。dbt の Iceberg 動作確認モデルは実行成功。volume の接続検証、AWS `prd` / Snowflake `prd` の apply、DuckDB 接続確認は未実施。
+- AWS `dev` workspace と Snowflake `dev` workspace は apply 済み。`ICEBERG_DEV` を作成し、AWS Iceberg ロールの信頼先を Snowflake IAM ユーザー ARN に更新済み。ローカル DuckDB 用の dev PAT も発行済み。dbt の Iceberg 動作確認モデルと、Horizon Catalog 経由の DuckDB 接続確認は成功。volume の接続検証、AWS `prd` / Snowflake `prd` の apply は未実施。
 
 ## 参照資料
 
